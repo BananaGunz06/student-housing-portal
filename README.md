@@ -76,4 +76,4 @@ The maths in `src/lib` is plain TypeScript with no React, unit-tested directly, 
 
 ## Not in version 1
 
-Accounts, landlord posting, messaging, roommate matching, rent splitting, scam warnings, real listings and deployment. The design spec is in `docs/superpowers/specs/` and the build plan is in `docs/superpowers/plans/`.
+Accounts, landlord posting, messaging, roommate matching, rent splitting, scam warnings and real listings. The design spec is in `docs/superpowers/specs/` and the build plan is in `docs/superpowers/plans/`.
