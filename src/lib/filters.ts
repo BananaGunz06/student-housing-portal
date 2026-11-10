@@ -91,3 +91,15 @@ export function nearestBudgetWithResults(
   const suggested = Math.ceil(Math.min(...above) / 50) * 50
   return { budget: suggested, count: candidates.filter((t) => t <= suggested).length }
 }
+
+/** How many filters differ from the defaults (for the Filters button). */
+export function activeFilterCount(f: Filters): number {
+  return (
+    (f.bedrooms !== 'any' ? 1 : 0) +
+    (f.types.length ? 1 : 0) +
+    (f.furnishedOnly ? 1 : 0) +
+    (f.maxCommute !== null ? 1 : 0) +
+    (f.moveIn ? 1 : 0) +
+    (f.showOver ? 1 : 0)
+  )
+}

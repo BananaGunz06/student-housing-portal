@@ -49,7 +49,7 @@ export interface Route {
 
 export const HOUSING_TYPE_LABELS: Record<HousingType, string> = {
   room: 'Room in shared house',
-  studio: 'Studio',
+  studio: 'Studio apartment',
   apartment: 'Apartment',
   basement: 'Basement apartment',
   house: 'Whole house',
