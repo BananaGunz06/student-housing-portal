@@ -18,7 +18,8 @@ export default function MiniMap({ listing, commute }: { listing: Listing; commut
   return (
     <MapContainer
       bounds={[home, walkTo, campus]}
-      boundsOptions={{ padding: [40, 40] }}
+      boundsOptions={{ paddingTopLeft: [40, 64], paddingBottomRight: [40, 32] }}
+      zoomControl={false}
       scrollWheelZoom={false}
       className="h-full w-full"
     >

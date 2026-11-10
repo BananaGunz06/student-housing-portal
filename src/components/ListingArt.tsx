@@ -30,8 +30,8 @@ export default function ListingArt({
 }) {
   const h = hash(id + variant)
   const sky = SKIES[h % SKIES.length]
-  const wall = WALLS[(h >> 3) % WALLS.length]
-  const lit = (i: number) => ((h >> (i % 24)) & 1 ? LIT : '#ffffff')
+  const wall = WALLS[(h >>> 3) % WALLS.length]
+  const lit = (i: number) => ((h >>> (i % 24)) & 1 ? LIT : '#ffffff')
 
   let scene
   if (variant === 'room') {

@@ -46,13 +46,15 @@ export default function CompareTable({ results, showFit }: { results: ListingRes
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-line bg-card">
-      <table className="w-full min-w-[34rem] border-collapse text-left align-top">
+      <table
+        className={`w-full border-collapse text-left align-top ${results.length > 2 ? 'min-w-[36rem]' : ''}`}
+      >
         <caption className="sr-only">Saved places side by side</caption>
         <thead>
           <tr>
-            <td className="sticky left-0 w-28 bg-card" />
+            <td className="sticky left-0 w-24 bg-card" />
             {results.map((r) => (
-              <th key={r.listing.id} scope="col" className="p-3 align-top font-normal">
+              <th key={r.listing.id} scope="col" className="p-2 align-top font-normal sm:p-3">
                 <ListingArt id={r.listing.id} type={r.listing.type} className="mb-2 h-16 w-full rounded-lg" />
                 <Link to={`/listing/${r.listing.id}`} className="font-bold underline">
                   {r.listing.title}
@@ -67,11 +69,11 @@ export default function CompareTable({ results, showFit }: { results: ListingRes
         <tbody>
           {rows.map((row) => (
             <tr key={row.label} className="border-t border-line">
-              <th scope="row" className="sticky left-0 bg-card p-3 align-top text-sm font-bold text-ink-soft">
+              <th scope="row" className="sticky left-0 w-24 bg-card p-2 align-top text-sm font-bold text-ink-soft sm:p-3">
                 {row.label}
               </th>
               {results.map((r) => (
-                <td key={r.listing.id} className="p-3 align-top">
+                <td key={r.listing.id} className="p-2 align-top sm:p-3">
                   {row.cell(r)}
                 </td>
               ))}

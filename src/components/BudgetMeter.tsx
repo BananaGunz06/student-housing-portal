@@ -31,7 +31,7 @@ export default function BudgetMeter({
           left: pct(budget),
           width: `calc(${pct(budget * 1.1)} - ${pct(budget)})`,
           backgroundImage:
-            'repeating-linear-gradient(135deg, rgb(168 106 18 / 0.35) 0 3px, transparent 3px 6px)',
+            'repeating-linear-gradient(135deg, rgb(140 90 14 / 0.4) 0 3px, transparent 3px 6px)',
         }}
       />
       <div className={`absolute inset-y-0 left-0 rounded-full ${FILL[fit]}`} style={{ width: pct(total) }} />

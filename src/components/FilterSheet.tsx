@@ -38,18 +38,35 @@ export default function FilterSheet({
 }) {
   const [f, setF] = useState(initial)
   const closeRef = useRef<HTMLButtonElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
   const set = (patch: Partial<Filters>) => setF((p) => ({ ...p, ...patch }))
   const count = countFor(f)
 
   useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null
     closeRef.current?.focus()
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+      if (e.key !== 'Tab' || !dialogRef.current) return
+      // Keep keyboard focus inside the sheet while it is open.
+      const els = dialogRef.current.querySelectorAll<HTMLElement>('button, input')
+      const first = els[0]
+      const last = els[els.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
     document.addEventListener('keydown', onKey)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = prev
+      opener?.focus()
     }
   }, [onClose])
 
@@ -60,6 +77,7 @@ export default function FilterSheet({
     <div className="fixed inset-0 z-[1200] flex items-end justify-center">
       <div className="absolute inset-0 bg-ink/40" onClick={onClose} aria-hidden="true" />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="filters-title"
