@@ -4,6 +4,8 @@ A budget-first housing search for University of Guelph students. You say what yo
 
 Version 1 is a portfolio piece and an idea test. It runs entirely in the browser, with no backend and no sign-up.
 
+**Live demo:** https://bananagunz06.github.io/student-housing-portal/
+
 | Budget | Results | Listing | Map | Compare |
 |---|---|---|---|---|
 | ![Welcome screen asking for a monthly budget](docs/screenshots/welcome.png) | ![Results with fit badges and budget meters](docs/screenshots/results.png) | ![Cost breakdown and walk-to-stop map](docs/screenshots/detail-map.png) | ![Map with price pins and bus routes](docs/screenshots/map.png) | ![Two saved places compared](docs/screenshots/compare.png) |
@@ -28,6 +30,12 @@ npm test         # unit + component tests (Vitest)
 npm run lint     # oxlint
 npm run build    # type-check and production build
 ```
+
+## Deploy
+
+`.github/workflows/deploy.yml` lints, tests and builds every pull request. On each push to `main` it also publishes the site to GitHub Pages. It builds with `BASE_PATH=/student-housing-portal/` so the app works under the repo's sub-path, and it copies `index.html` to `404.html` so refreshing a page like `/listing/gue-001` still loads the app.
+
+One-time setup: in the repo's **Settings → Pages**, set **Source** to **GitHub Actions**.
 
 ## About the data (read this)
 
