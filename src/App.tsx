@@ -1,7 +1,9 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import BottomNav from './components/BottomNav'
 import Compare from './pages/Compare'
+import Conversation from './pages/Conversation'
 import ListingDetail from './pages/ListingDetail'
+import Messages from './pages/Messages'
 import NotFound from './pages/NotFound'
 import Results from './pages/Results'
 import Saved from './pages/Saved'
@@ -40,6 +42,8 @@ export function AppRoutes() {
         <Route path="/listing/:id" element={<ListingDetail />} />
         <Route path="/saved" element={<Saved />} />
         <Route path="/compare" element={<Compare />} />
+        <Route path="/messages" element={<Messages />} />
+        <Route path="/messages/:listingId" element={<Conversation />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
