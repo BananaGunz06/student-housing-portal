@@ -46,7 +46,7 @@ Browsing needs no account: search, filters and every listing work without signin
 - **Setup (Supabase).** The app uses [Supabase](https://supabase.com) for sign-in and storage. To run it against your own project:
   1. Create a Supabase project.
   2. Open the SQL Editor and run `supabase/migrations/0001_accounts.sql`. It creates the tables and the row-level security rules that keep each account's data private.
-  3. For the demo, turn off **Confirm email** under Authentication → Providers → Email. Otherwise new accounts must confirm by email before they can sign in.
+  3. For the demo, turn off **Confirm email** under Authentication → Sign In / Providers → Email. Otherwise new accounts must confirm by email before they can sign in.
   4. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` for the app. Only the publishable (anon) key belongs in the repo or the browser. Never add the secret or service_role key.
 - **Data note.** Account data is demo data, like the rest of the sample app. Listings and posters are still fictional.
 

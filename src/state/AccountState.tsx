@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import SignInSheet from '../components/SignInSheet'
-import type { AuthResult, Backend, Profile, Session } from '../lib/backend/types'
+import type { AuthResult, Backend, Profile, ProfileUpdate, Session } from '../lib/backend/types'
 
 export type AccountReason = 'save' | 'message'
 export type SyncStatus = 'idle' | 'saving' | 'saved' | 'error'
@@ -13,12 +13,16 @@ export interface AccountApi {
   signUp(name: string, email: string, password: string): Promise<AuthResult>
   signOut(): Promise<void>
   deleteAccount(): Promise<void>
-  saveProfile(p: Profile): Promise<void>
+  saveProfile(p: ProfileUpdate): Promise<void>
   /** Run `then` now if signed in; otherwise ask the student to sign in first, then run it. */
   requireAccount(reason: AccountReason, then: () => void): void
   syncStatus: SyncStatus
   /** Used by the cloud sync to report progress. */
   setSyncStatus(s: SyncStatus): void
+  /** Used by the cloud sync so the app can save anything outstanding (before logging out). */
+  registerFlush(fn: (() => Promise<'saved' | 'failed'>) | null): void
+  /** Save anything outstanding now and wait; 'failed' means the account doesn't hold everything yet. */
+  flushSync(): Promise<'saved' | 'failed'>
   /** True when reading the saved session failed (for example offline), so "signed out" is only a guess. */
   restoreFailed: boolean
   /** The backend this provider talks to (for the cloud sync). */
@@ -40,6 +44,11 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
   const [pending, setPending] = useState<Pending | null>(null)
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle')
   const signedIn = session !== null
+  const flushRef = useRef<(() => Promise<'saved' | 'failed'>) | null>(null)
+  const registerFlush = useCallback((fn: (() => Promise<'saved' | 'failed'>) | null) => {
+    flushRef.current = fn
+  }, [])
+  const flushSync = useCallback(async () => (flushRef.current ? flushRef.current() : 'saved'), [])
 
   useEffect(() => {
     let live = true
@@ -68,17 +77,28 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
   }, [backend])
 
   const userId = session?.userId ?? null
+  /** Bumped when a save starts, so a profile read that began earlier can't overwrite it. */
+  const profileGen = useRef(0)
+  const readProfile = useCallback(
+    (uid: string, isLive: () => boolean) => {
+      const gen = profileGen.current
+      backend
+        .loadProfile()
+        .then((p) => {
+          if (isLive() && gen === profileGen.current) setLoadedProfile({ userId: uid, profile: p })
+        })
+        .catch(() => {})
+    },
+    [backend],
+  )
   useEffect(() => {
     if (!userId) return
     let live = true
-    backend
-      .loadProfile()
-      .then((p) => live && setLoadedProfile({ userId, profile: p }))
-      .catch(() => {})
+    readProfile(userId, () => live)
     return () => {
       live = false
     }
-  }, [backend, userId])
+  }, [userId, readProfile])
 
   // Only the profile of the current user counts; a stale one is ignored.
   const profile = loadedProfile && loadedProfile.userId === userId ? loadedProfile.profile : null
@@ -115,16 +135,26 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
       signOut: () => backend.signOut(),
       deleteAccount: () => backend.deleteAccount(),
       saveProfile: async (p) => {
+        profileGen.current++
         await backend.saveProfile(p)
-        if (userId) setLoadedProfile({ userId, profile: p })
+        if (!userId) return
+        if (p.phone === undefined) {
+          // The stored phone was kept, and we don't know it: read the profile again.
+          readProfile(userId, () => true)
+        } else {
+          profileGen.current++
+          setLoadedProfile({ userId, profile: { displayName: p.displayName, phone: p.phone } })
+        }
       },
       requireAccount,
       syncStatus,
       setSyncStatus,
+      registerFlush,
+      flushSync,
       restoreFailed,
       backend,
     }),
-    [backend, loaded, signedIn, session, profile, userId, requireAccount, syncStatus, restoreFailed],
+    [registerFlush, flushSync, readProfile, backend, loaded, signedIn, session, profile, userId, requireAccount, syncStatus, restoreFailed],
   )
 
   return (

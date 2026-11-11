@@ -11,6 +11,12 @@ export interface Profile {
   phone: string | null
 }
 
+/** A profile change. `phone` left out (undefined) means "keep what is stored"; null clears it. */
+export interface ProfileUpdate {
+  displayName: string
+  phone?: string | null
+}
+
 /** What an account keeps in the cloud. */
 export interface CloudState {
   budget: number | null
@@ -30,7 +36,7 @@ export interface Backend {
   signOut(): Promise<void>
   deleteAccount(): Promise<void>
   loadProfile(): Promise<Profile>
-  saveProfile(p: Profile): Promise<void>
+  saveProfile(p: ProfileUpdate): Promise<void>
   loadState(): Promise<CloudState>
   saveState(s: CloudState): Promise<void>
 }

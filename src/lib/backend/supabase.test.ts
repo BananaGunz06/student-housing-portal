@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { cloudStateToRow, dataError, mapAuthError, rowToCloudState } from './supabase'
+import { shouldForwardAuthEvent } from './authEvents'
+import { cloudStateToRow, dataError, profileUpdateRow, mapAuthError, rowToCloudState } from './supabase'
 
 describe('mapAuthError', () => {
   it('maps invalid credentials', () => {
@@ -51,5 +52,28 @@ describe('dataError', () => {
   })
   it('keeps other messages', () => {
     expect(dataError({ message: 'permission denied' }).message).toBe('permission denied')
+  })
+})
+
+describe('shouldForwardAuthEvent', () => {
+  it('ignores INITIAL_SESSION, because getSession() owns the initial state', () => {
+    expect(shouldForwardAuthEvent('INITIAL_SESSION')).toBe(false)
+  })
+  it('forwards real changes', () => {
+    for (const e of ['SIGNED_IN', 'SIGNED_OUT', 'TOKEN_REFRESHED', 'USER_UPDATED']) {
+      expect(shouldForwardAuthEvent(e)).toBe(true)
+    }
+  })
+})
+
+describe('profileUpdateRow', () => {
+  it('sends the phone when it is given, including clearing it', () => {
+    expect(profileUpdateRow({ displayName: 'Sam', phone: '555-0100' })).toMatchObject({ display_name: 'Sam', phone: '555-0100' })
+    expect(profileUpdateRow({ displayName: 'Sam', phone: null })).toMatchObject({ phone: null })
+  })
+  it('leaves the phone out when it is unchanged', () => {
+    const row = profileUpdateRow({ displayName: 'Sam' })
+    expect(row).not.toHaveProperty('phone')
+    expect(row.display_name).toBe('Sam')
   })
 })

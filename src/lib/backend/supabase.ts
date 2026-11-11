@@ -1,6 +1,7 @@
 import { createClient, type Session as SbSession } from '@supabase/supabase-js'
 import { cleanCloudState } from '../sync'
-import type { AuthError, AuthResult, Backend, CloudState, Profile, Session } from './types'
+import { shouldForwardAuthEvent } from './authEvents'
+import type { AuthError, AuthResult, Backend, CloudState, ProfileUpdate, Session } from './types'
 
 interface ErrLike {
   message?: unknown
@@ -44,6 +45,15 @@ export function cloudStateToRow(userId: string, s: CloudState) {
   }
 }
 
+/** The columns a profile change sets; a phone that is left out is left alone. */
+export function profileUpdateRow(p: ProfileUpdate) {
+  return {
+    display_name: p.displayName,
+    ...(p.phone === undefined ? {} : { phone: p.phone }),
+    updated_at: new Date().toISOString(),
+  }
+}
+
 const toSession = (s: SbSession | null): Session | null => (s ? { userId: s.user.id, email: s.user.email ?? '' } : null)
 
 /** Failures of data calls: 'network' for connectivity problems, otherwise the server's message. */
@@ -75,7 +85,9 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       return toSession(data.session)
     },
     onAuthChange(cb) {
-      const { data } = sb.auth.onAuthStateChange((_event, session) => cb(toSession(session)))
+      const { data } = sb.auth.onAuthStateChange((event, session) => {
+        if (shouldForwardAuthEvent(event)) cb(toSession(session))
+      })
       return () => data.subscription.unsubscribe()
     },
     async signUp(name, email, password) {
@@ -110,12 +122,9 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       if (error) throw dataError(error)
       return data ? { displayName: data.display_name ?? '', phone: data.phone ?? null } : { displayName: '', phone: null }
     },
-    async saveProfile(p: Profile) {
+    async saveProfile(p: ProfileUpdate) {
       const id = await userId()
-      const { error } = await sb
-        .from('profiles')
-        .update({ display_name: p.displayName, phone: p.phone, updated_at: new Date().toISOString() })
-        .eq('id', id)
+      const { error } = await sb.from('profiles').update(profileUpdateRow(p)).eq('id', id)
       if (error) throw dataError(error)
     },
     async loadState() {

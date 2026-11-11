@@ -6,7 +6,9 @@ import { getAll } from '../lib/listingsRepo'
 import { greetingName } from '../lib/messages'
 import { createFakeBackend } from '../test/fakeBackend'
 import { renderApp, setBudget, sessionReady } from '../test/renderApp'
-import { AppStateProvider, useAppState } from '../state/AppState'
+import { AppStateProvider, useAppState, type AppState as AppStateValue } from '../state/AppState'
+import { CloudSync } from '../state/CloudSync'
+import userEvent from '@testing-library/user-event'
 import { AccountProvider, useAccount, type SyncStatus } from '../state/AccountState'
 import { AppRoutes } from '../App'
 import { MemoryRouter } from 'react-router-dom'
@@ -301,6 +303,51 @@ describe('Account page', () => {
     expect(screen.getByLabelText('Name')).toHaveValue('Fresh')
   })
 
+  test('saving without having loaded the profile keeps the phone stored on the server', async () => {
+    const base = createFakeBackend({ users: [student], sessionEmail: student.email })
+    await base.saveProfile({ displayName: student.name, phone: '555-0100' })
+    const backend: Backend = { ...base, loadProfile: async () => Promise.reject(new Error('network')) }
+    const { user } = renderApp('/account', { backend })
+    await sessionReady()
+    await user.type(screen.getByLabelText('Name'), 'Fresh')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByText('Saved', { selector: 'p' })).toBeInTheDocument()
+    expect(await base.loadProfile()).toEqual({ displayName: 'Fresh', phone: '555-0100' })
+  })
+
+  test('saving without having loaded the profile still sets a phone the student typed', async () => {
+    const base = createFakeBackend({ users: [student], sessionEmail: student.email })
+    await base.saveProfile({ displayName: student.name, phone: '555-0100' })
+    const backend: Backend = { ...base, loadProfile: async () => Promise.reject(new Error('network')) }
+    const { user } = renderApp('/account', { backend })
+    await sessionReady()
+    await user.type(screen.getByLabelText('Name'), 'Fresh')
+    await user.type(screen.getByLabelText('Phone (optional)'), '555-0199')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByText('Saved', { selector: 'p' })).toBeInTheDocument()
+    expect(await base.loadProfile()).toEqual({ displayName: 'Fresh', phone: '555-0199' })
+  })
+
+  test('a profile load that resolves after a save does not overwrite the saved profile', async () => {
+    const base = createFakeBackend({ users: [student], sessionEmail: student.email })
+    let resolve!: (p: Profile) => void
+    const backend: Backend = { ...base, loadProfile: () => new Promise<Profile>((r) => (resolve = r)) }
+    const ref = {} as { account: ReturnType<typeof useAccount> }
+    function Probe() {
+      ref.account = useAccount()
+      return null
+    }
+    render(
+      <AccountProvider backend={backend}>
+        <Probe />
+      </AccountProvider>,
+    )
+    await sessionReady()
+    await act(async () => void (await ref.account.saveProfile({ displayName: 'New', phone: '555-0100' })))
+    await act(async () => resolve({ displayName: 'Old', phone: null }))
+    expect(ref.account.profile).toEqual({ displayName: 'New', phone: '555-0100' })
+  })
+
   test('editing after a save clears the Saved message', async () => {
     const { user } = renderApp('/account', { signedInAs: student.email })
     await sessionReady()
@@ -337,6 +384,91 @@ describe('Account page', () => {
     await sessionReady()
     await user.click(screen.getByRole('button', { name: 'Log out' }))
     expect(await screen.findByText(SIGNED_OUT_LINE)).toBeInTheDocument()
+  })
+
+  describe('Log out and unsynced changes', () => {
+    const WARNING = 'Some changes haven’t synced yet. If you log out now, they’ll be lost on this device.'
+    function renderWithProbe(backend: ReturnType<typeof createFakeBackend>) {
+      const ref = {} as { app: AppStateValue }
+      function Probe() {
+        ref.app = useAppState()
+        return null
+      }
+      const user = userEvent.setup()
+      render(
+        <MemoryRouter initialEntries={['/account']}>
+          <AccountProvider backend={backend}>
+            <AppStateProvider>
+              <CloudSync />
+              <Probe />
+              <AppRoutes />
+            </AppStateProvider>
+          </AccountProvider>
+        </MemoryRouter>,
+      )
+      return { user, ref }
+    }
+
+    test('a place saved just before Log out reaches the account', async () => {
+      const backend = createFakeBackend({ users: [student], sessionEmail: student.email })
+      const { user, ref } = renderWithProbe(backend)
+      await screen.findByText('Saved to your account')
+      act(() => ref.app.setSaved(listing.id, true))
+      await user.click(screen.getByRole('button', { name: 'Log out' }))
+      expect(await screen.findByText(SIGNED_OUT_LINE)).toBeInTheDocument()
+      expect(backend.stateOf(student.email).savedIds).toEqual([listing.id])
+      await backend.signIn(student.email, student.password)
+      await waitFor(() => expect(ref.app.savedIds).toEqual([listing.id]))
+    })
+
+    test('offline, Log out warns first; Stay signed in keeps everything', async () => {
+      const backend = createFakeBackend({ users: [student], sessionEmail: student.email })
+      const { user, ref } = renderWithProbe(backend)
+      await screen.findByText('Saved to your account')
+      backend.setOffline(true)
+      act(() => ref.app.setSaved(listing.id, true))
+      await user.click(screen.getByRole('button', { name: 'Log out' }))
+      expect(await screen.findByText(WARNING)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Stay signed in' }))
+      expect(screen.queryByText(WARNING)).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Log out' })).toBeEnabled()
+      expect(ref.app.savedIds).toEqual([listing.id])
+      expect(screen.queryByText(SIGNED_OUT_LINE)).not.toBeInTheDocument()
+    })
+
+    test('offline, Log out anyway signs out and clears this device', async () => {
+      const backend = createFakeBackend({ users: [student], sessionEmail: student.email })
+      const { user, ref } = renderWithProbe(backend)
+      await screen.findByText('Saved to your account')
+      backend.setOffline(true)
+      act(() => ref.app.setSaved(listing.id, true))
+      await user.click(screen.getByRole('button', { name: 'Log out' }))
+      await user.click(await screen.findByRole('button', { name: 'Log out anyway' }))
+      expect(await screen.findByText(SIGNED_OUT_LINE)).toBeInTheDocument()
+      await waitFor(() => expect(ref.app.savedIds).toEqual([]))
+    })
+
+    test('shows a busy state while logging out', async () => {
+      const backend = createFakeBackend({ users: [student], sessionEmail: student.email })
+      let release = () => {}
+      vi.spyOn(backend, 'signOut').mockImplementation(() => new Promise<void>((res) => (release = res)))
+      const { user } = renderWithProbe(backend)
+      await screen.findByText('Saved to your account')
+      await user.click(screen.getByRole('button', { name: 'Log out' }))
+      expect(await screen.findByRole('button', { name: 'Logging out…' })).toBeDisabled()
+      await act(async () => release())
+    })
+
+    test('a failed sign out says so and lets the student try again', async () => {
+      const backend = createFakeBackend({ users: [student], sessionEmail: student.email })
+      vi.spyOn(backend, 'signOut').mockRejectedValueOnce(new Error('boom'))
+      const { user } = renderWithProbe(backend)
+      await screen.findByText('Saved to your account')
+      await user.click(screen.getByRole('button', { name: 'Log out' }))
+      expect(await screen.findByText('Couldn’t log out. Please try again.')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Log out' }))
+      expect(await screen.findByText(SIGNED_OUT_LINE)).toBeInTheDocument()
+    })
   })
 
   test('Delete account asks first, then removes the user and signs out', async () => {

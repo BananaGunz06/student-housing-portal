@@ -1,3 +1,4 @@
+import { shouldForwardAuthEvent } from '../lib/backend/authEvents'
 import type { AuthResult, Backend, CloudState, Profile, Session } from '../lib/backend/types'
 
 interface FakeUser {
@@ -13,6 +14,11 @@ export interface FakeOptions {
   offline?: boolean
   /** Start signed in as this user (must exist in `users`). */
   sessionEmail?: string
+  /**
+   * Like supabase-js, announce an INITIAL_SESSION event (null when the stored session can't be
+   * read, for example offline) right after someone subscribes, before getSession() settles.
+   */
+  emitInitialNull?: boolean
 }
 
 const emptyState = (): CloudState => ({ budget: null, filters: null, savedIds: [], messages: [] })
@@ -60,11 +66,18 @@ export function createFakeBackend(opts: FakeOptions = {}): Backend & { setOfflin
       return structuredClone(u.state)
     },
     async getSession() {
+      // A real session read takes a network round trip; the initial event lands well before it.
+      if (opts.emitInitialNull) await new Promise((r) => setTimeout(r, 5))
       await guard()
       return sessionOf(current)
     },
     onAuthChange(cb) {
       listeners.add(cb)
+      if (opts.emitInitialNull && shouldForwardAuthEvent('INITIAL_SESSION')) {
+        queueMicrotask(() => {
+          if (listeners.has(cb)) cb(null)
+        })
+      }
       return () => {
         listeners.delete(cb)
       }
@@ -92,7 +105,7 @@ export function createFakeBackend(opts: FakeOptions = {}): Backend & { setOfflin
       return { ok: true, needsConfirmation: false }
     },
     async signOut() {
-      await guard()
+      // Like supabase-js with scope 'local': needs no network.
       setCurrent(null)
     },
     async deleteAccount() {
@@ -104,7 +117,8 @@ export function createFakeBackend(opts: FakeOptions = {}): Backend & { setOfflin
       return structuredClone((await signedIn()).profile)
     },
     async saveProfile(p) {
-      ;(await signedIn()).profile = structuredClone(p)
+      const u = await signedIn()
+      u.profile = { displayName: p.displayName, phone: p.phone === undefined ? u.profile.phone : p.phone }
     },
     async loadState() {
       return structuredClone((await signedIn()).state)
