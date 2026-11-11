@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react'
 import { describe, expect, test } from 'vitest'
 import { formatMoney } from '../lib/cost'
 import { applyFilters, DEFAULT_FILTERS, evaluate, nearestBudgetWithResults } from '../lib/filters'
+import { campusCommute, shortCommute } from '../lib/commute'
 import { getAll } from '../lib/listingsRepo'
 import { renderApp, setBudget } from '../test/renderApp'
 
@@ -121,5 +122,17 @@ describe('Welcome', () => {
     expect(screen.getByRole('heading', { name: 'Places in Guelph for your budget' })).toBeInTheDocument()
     expect(JSON.parse(localStorage.getItem('shp.budget')!)).toBe(850)
     expect(JSON.parse(localStorage.getItem('shp.filters')!).bedrooms).toBe(0)
+  })
+
+  test('cards say "to campus" before the transfer note', () => {
+    setBudget(5000)
+    renderApp('/results')
+    const l = getAll().find((x) => {
+      const c = campusCommute(x)
+      return c.mode === 'bus' && c.transfer
+    })!
+    const card = screen.getAllByRole('article').find((a) => within(a).queryByText(l.title))!
+    expect(within(card).getByText(shortCommute(campusCommute(l), { toCampus: true }))).toBeInTheDocument()
+    expect(within(card).getByText(/^≈\d+ min by bus to campus, 1 transfer$/)).toBeInTheDocument()
   })
 })

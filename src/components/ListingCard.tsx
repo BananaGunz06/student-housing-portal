@@ -38,7 +38,7 @@ export default function ListingCard({ result, budget }: { result: ListingResult;
         <p className="text-sm text-ink-soft">
           {HOUSING_TYPE_LABELS[l.type]} in {l.neighbourhood}
         </p>
-        <p className="mt-2 text-sm font-bold">{shortCommute(commute)} to campus</p>
+        <p className="mt-2 text-sm font-bold">{shortCommute(commute, { toCampus: true })}</p>
       </div>
     </article>
   )

@@ -50,7 +50,8 @@ const DEFAULT_CANDIDATES = STOPS.filter(hasRide)
 
 /**
  * Estimated door-to-campus commute: walk, or walk to a stop within 15 minutes
- * and ride its scheduled time. "transfer" means no direct bus is close enough.
+ * and ride its scheduled time (direct, or with one change of bus), whichever
+ * total is smallest. With no such stop the walk is returned, flagged `noBusNearby`.
  */
 export function campusCommute(
   p: LatLng,
@@ -93,9 +94,9 @@ export function campusCommute(
       }
     }
   }
+  if (walk <= ALWAYS_WALK_MIN) return { mode: 'walk', minutes: walk }
   if (!best) return { mode: 'walk', minutes: walk, noBusNearby: true }
-  if (walk <= ALWAYS_WALK_MIN || walk <= best.minutes) return { mode: 'walk', minutes: walk }
-  return best
+  return walk <= best.minutes ? { mode: 'walk', minutes: walk } : best
 }
 
 function compareRoutes(a: Route, b: Route, order: Map<string, number>): number {
@@ -108,17 +109,21 @@ export function commuteMinutes(c: Commute): number {
   return c.minutes
 }
 
-/** "≈4 min walk to stop · Route 99 · ≈12 min to campus" */
+/** "≈4 min walk to stop · Route 99 · ≈12 min to campus" / "… · Route 2 then Route 99 (change at X) · ≈34 min to campus, 1 transfer" */
 export function describeCommute(c: Commute): string {
   if (c.mode === 'walk') return `≈${c.minutes} min walk to campus${c.noBusNearby ? ' (no bus nearby)' : ''}`
   const routes = c.transfer
-    ? `Route ${c.route.shortName} then Route ${c.transfer.secondRoute.shortName}`
+    ? `Route ${c.route.shortName} then Route ${c.transfer.secondRoute.shortName} (change at ${c.transfer.stop.name})`
     : `Route ${c.route.shortName}`
   return `≈${c.walkToStopMinutes} min walk to stop · ${routes} · ≈${c.minutes} min to campus${c.transfer ? ', 1 transfer' : ''}`
 }
 
-/** Short form for cards: "≈9 min walk" / "≈18 min by bus" / "≈34 min by bus, 1 transfer" */
-export function shortCommute(c: Commute): string {
-  if (c.mode === 'walk') return `≈${c.minutes} min walk`
-  return `≈${c.minutes} min by bus${c.transfer ? ', 1 transfer' : ''}`
+/**
+ * Short form: "≈9 min walk" / "≈18 min by bus" / "≈34 min by bus, 1 transfer".
+ * With `toCampus`: "≈9 min walk to campus" / "≈18 min by bus to campus" / "≈34 min by bus to campus, 1 transfer".
+ */
+export function shortCommute(c: Commute, opts: { toCampus?: boolean } = {}): string {
+  const to = opts.toCampus ? ' to campus' : ''
+  if (c.mode === 'walk') return `≈${c.minutes} min walk${to}`
+  return `≈${c.minutes} min by bus${to}${c.transfer ? ', 1 transfer' : ''}`
 }

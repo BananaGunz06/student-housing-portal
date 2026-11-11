@@ -7,6 +7,19 @@ import { renderApp, setBudget } from '../test/renderApp'
 
 vi.mock('../components/MiniMap', () => ({ default: () => <div>mini map</div> }))
 
+// A made-up listing far outside the city, so its commute is a walk with no bus nearby.
+const REMOTE_ID = 'test-remote'
+vi.mock('../lib/listingsRepo', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../lib/listingsRepo')>()
+  return {
+    ...real,
+    getById: (id: string) =>
+      id === 'test-remote'
+        ? { ...real.getAll()[0], id: 'test-remote', title: 'Remote cabin', lat: 43.45, lng: -80.4 }
+        : real.getById(id),
+  }
+})
+
 const withExtras = getAll().find((l) => !l.utilitiesIncluded && !l.internetIncluded)!
 
 describe('Listing detail', () => {
@@ -39,7 +52,10 @@ describe('Listing detail', () => {
   })
 
   test('describes a bus commute with the real route number', () => {
-    const bus = getAll().find((l) => campusCommute(l).mode === 'bus')!
+    const bus = getAll().find((l) => {
+      const c = campusCommute(l)
+      return c.mode === 'bus' && !c.transfer
+    })!
     setBudget(5000)
     renderApp(`/listing/${bus.id}`)
     expect(screen.getByText(/^≈\d+ min walk to stop · Route \S+( \S)? · ≈\d+ min to campus$/)).toBeInTheDocument()
@@ -53,15 +69,13 @@ describe('Listing detail', () => {
     })!
     setBudget(5000)
     renderApp(`/listing/${l.id}`)
-    expect(screen.getByText(/Route \S+( \S)? then Route \S+( \S)? · ≈\d+ min to campus, 1 transfer$/)).toBeInTheDocument()
+    expect(screen.getByText(/Route \S+( \S)? then Route \S+( \S)? \(change at .+\) · ≈\d+ min to campus, 1 transfer$/)).toBeInTheDocument()
   })
 
   test('says so when no bus is nearby', () => {
-    const l = getAll().find((x) => (campusCommute(x) as { noBusNearby?: boolean }).noBusNearby)
-    if (!l) return // every sample listing has a bus within reach
     setBudget(5000)
-    renderApp(`/listing/${l.id}`)
-    expect(screen.getByText(/min walk to campus \(no bus nearby\)$/)).toBeInTheDocument()
+    renderApp(`/listing/${REMOTE_ID}`)
+    expect(screen.getByText(/^≈\d+ min walk to campus \(no bus nearby\)$/)).toBeInTheDocument()
   })
 
   test('an unknown listing shows a friendly not-found', () => {

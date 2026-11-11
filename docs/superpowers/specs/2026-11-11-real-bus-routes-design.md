@@ -23,7 +23,7 @@ The map and commute estimates use 4 hand-made sample routes. Students judge a pl
 2. **Commute estimate** (`src/lib/commute.ts`):
    - Walk-only stays as today (≤ 15 min walk, or no slower than the bus, shows walking).
    - Bus: consider stops within a **15-minute walk**; for each stop and route with a `toCampus` time, total = walk to stop + ride. Pick the smallest. Waiting time is not included (stated in the copy, as today).
-   - **One transfer (added after the first build, owner's choice):** the converter also stores, per stop, the best trip with one change of bus anywhere on the network: ride on route A to a stop where route B goes directly to the University Centre, plus **5 minutes to change**, using the same weekday timetable and morning window. Stored as `viaTransfer: { minutes, firstRoute, secondRoute, transferStop }`. In the app, a listing with no direct bus within a 15-minute walk uses the best walk + transfer trip: "≈34 min by bus, 1 transfer · Route 16 then Route 99". These count in the "Longest commute" filter like any other time.
+   - **One transfer (added after the first build, owner's choice):** the converter also stores, per stop, the best trip with one change of bus anywhere on the network: ride on route A to a stop where route B goes directly to the University Centre, plus **5 minutes to change**, using the same weekday timetable and morning window. Stored as `viaTransfer: { minutes, firstRoute, secondRoute, transferStop }`. In the app, each stop within a 15-minute walk offers its direct rides and its one-transfer trip, and the app picks the minimum total (walk to stop + ride). A transfer trip reads "≈10 min walk to stop · Route 9 then Route 99 (change at <stop>) · ≈34 min to campus, 1 transfer" (cards: "≈34 min by bus to campus, 1 transfer"). These count in the "Longest commute" filter like any other time.
    - **No bus nearby:** if no stop within a 15-minute walk has a direct or one-transfer ride, the commute is the walk with `noBusNearby: true`, shown as "≈N min walk to campus (no bus nearby)" (short form "≈N min walk"). It counts in the "Longest commute" filter with its minutes like any walk. There is no "Transfer needed" state.
 3. **Map:** real route lines in their colours; stops drawn only when zoomed in (zoom ≥ 15) so 600+ dots don't clutter the city view; campus marker at the University Centre. The mini-map on a listing draws the chosen route and the walk to its stop.
 4. **Copy and credit:** the map notice says "Bus routes: Guelph Transit, Winter 2026 schedule"; the map attribution adds "Transit data: City of Guelph"; the listing's commute note says times come from the timetable and don't include waiting. README "About the data" updated. The old sample-network script and its "sample" wording are removed.
@@ -31,10 +31,10 @@ The map and commute estimates use 4 hand-made sample routes. Students judge a pl
 
 ## Out of scope
 
-Real-time arrivals, transfers/journey planning, weekend or evening schedules, walking along real streets (still straight line × 1.3).
+Real-time arrivals, multi-transfer journey planning (one change of bus is supported), weekend or evening schedules, walking along real streets (still straight line × 1.3).
 
 ## Testing
 
-- Unit: GTFS parsing on a tiny fixture feed (route filtering, shape simplification keeps endpoints and tolerance, ride-time median and the 7–10 window, stop→routes), commute (walk, direct bus, nearest-of-several, transfer).
+- Unit: GTFS parsing on a tiny fixture feed (route filtering, shape simplification keeps endpoints and tolerance, ride-time median and the 7–10 window, stop→routes), commute (walk, direct bus, nearest-of-several, one-transfer, no-bus-nearby walk, short walk never flagged).
 - Data sanity: generated files load; every kept route has a colour and a line; the University Centre stops exist; a known stop on Gordon St has a ride time to campus on a route that serves it; total bundle growth stays small (generated GeoJSON under ~250 KB).
 - Flow tests updated for the new copy; browser check (375 and 1280 px): routes visible, stops appear when zoomed, a listing shows a real route number, no console errors, no horizontal scroll.

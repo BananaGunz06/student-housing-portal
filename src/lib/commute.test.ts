@@ -105,6 +105,13 @@ describe('campusCommute (synthetic network)', () => {
     expect(campusCommute(HOME, [platform], [R1], FAR_CAMPUS)).toMatchObject({ mode: 'walk', noBusNearby: true })
   })
 
+  test('a home 5 minutes from campus with no usable stop is a plain walk, not "no bus nearby"', () => {
+    const campus = { lat: 43.5025, lng: -80.2 } // about 280 m: 5 min
+    const c = campusCommute(HOME, [stopAt('dead-end', 0.001, {})], [R1], campus)
+    expect(c).toEqual({ mode: 'walk', minutes: 5 })
+    expect(campusCommute(HOME, [], [R1], campus)).toEqual({ mode: 'walk', minutes: 5 })
+  })
+
   test('walks when walking is no slower than the bus', () => {
     const campus = { lat: 43.505, lng: -80.2 } // about 560 m: 8 min walk
     const c = campusCommute(HOME, [stopAt('s', 0.001, { r1: 20 })], [R1], campus)
@@ -217,8 +224,11 @@ describe('commute text', () => {
   }
 
   test('one-transfer copy', () => {
-    expect(describeCommute(oneTransfer)).toBe('≈6 min walk to stop · Route 2 then Route 99 · ≈34 min to campus, 1 transfer')
+    expect(describeCommute(oneTransfer)).toBe(
+      '≈6 min walk to stop · Route 2 then Route 99 (change at Transfer St) · ≈34 min to campus, 1 transfer',
+    )
     expect(shortCommute(oneTransfer)).toBe('≈34 min by bus, 1 transfer')
+    expect(shortCommute(oneTransfer, { toCampus: true })).toBe('≈34 min by bus to campus, 1 transfer')
     expect(commuteMinutes(oneTransfer)).toBe(34)
   })
 
@@ -226,6 +236,11 @@ describe('commute text', () => {
     expect(describeCommute(walk)).toBe('≈9 min walk to campus')
     expect(describeCommute(bus)).toBe('≈6 min walk to stop · Route 99 · ≈20 min to campus')
     expect(describeCommute(noBus)).toBe('≈40 min walk to campus (no bus nearby)')
+  })
+  test('shortCommute with toCampus', () => {
+    expect(shortCommute(walk, { toCampus: true })).toBe('≈9 min walk to campus')
+    expect(shortCommute(bus, { toCampus: true })).toBe('≈20 min by bus to campus')
+    expect(shortCommute(noBus, { toCampus: true })).toBe('≈40 min walk to campus')
   })
   test('shortCommute', () => {
     expect(shortCommute(walk)).toBe('≈9 min walk')

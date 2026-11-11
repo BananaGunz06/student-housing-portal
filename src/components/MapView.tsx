@@ -102,7 +102,7 @@ export default function MapView({
                 <span className="font-sans text-sm font-normal text-ink-soft"> a month, all-in</span>
               </p>
               <p className="text-sm text-ink-soft">
-                {HOUSING_TYPE_LABELS[selected.listing.type]}, {shortCommute(selected.commute)} to campus
+                {HOUSING_TYPE_LABELS[selected.listing.type]}, {shortCommute(selected.commute, { toCampus: true })}
               </p>
             </div>
             <FitBadge fit={selected.fit} />
