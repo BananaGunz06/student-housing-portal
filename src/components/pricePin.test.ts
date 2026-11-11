@@ -18,3 +18,9 @@ test.each([
 test('marks the selected pin', () => {
   expect(pricePinHtml(evaluateOne(makeListing(), 1000), true)).toContain('pin--selected')
 })
+
+test('marks the hovered pin (the stylesheet lifts, enlarges and dashed-outlines it, so it is not just a colour)', () => {
+  const html = pricePinHtml(evaluateOne(makeListing(), 1000), false, true)
+  expect(html).toContain('pin--hover')
+  expect(pricePinHtml(evaluateOne(makeListing(), 1000))).not.toContain('pin--hover')
+})
