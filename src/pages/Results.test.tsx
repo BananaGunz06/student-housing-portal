@@ -41,28 +41,66 @@ describe('Results', () => {
     expect(screen.getAllByRole('article').length).toBeGreaterThanOrEqual(hint.count)
   })
 
-  test('filters apply from the bottom sheet', async () => {
+  test('the filter sidebar applies filters straight away and shows them as chips', async () => {
     setBudget(5000)
     const { user } = renderApp('/results')
-    await user.click(screen.getByRole('button', { name: 'Filters' }))
-    const sheet = screen.getByRole('dialog', { name: 'Filters' })
-    await user.click(within(sheet).getByRole('button', { name: 'Studio' }))
+    expect(screen.queryByRole('button', { name: /^Filters/ })).toBeNull()
+    const sidebar = screen.getByRole('complementary', { name: 'Filters' })
     const studios = getAll().filter((l) => l.type === 'studio').length
-    await user.click(within(sheet).getByRole('button', { name: `Show ${studios} places` }))
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    await user.click(within(sidebar).getByRole('button', { name: 'Studio apartment' }))
+    expect(within(sidebar).getByRole('button', { name: 'Studio apartment' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getAllByRole('article')).toHaveLength(studios)
-    expect(screen.getByRole('button', { name: 'Filters (1)' })).toBeInTheDocument()
+    expect(within(sidebar).getByText(`${studios} places`)).toBeInTheDocument()
+
+    const applied = screen.getByRole('list', { name: 'Applied filters' })
+    await user.click(within(applied).getByRole('button', { name: 'Remove filter: Studio apartment' }))
+    expect(screen.getAllByRole('article')).toHaveLength(expectedCount(5000))
+    expect(within(sidebar).getByRole('button', { name: 'Studio apartment' })).toHaveAttribute('aria-pressed', 'false')
   })
 
-  test('Escape closes the filter sheet without applying', async () => {
+  test('Clear all removes every filter', async () => {
+    setBudget(5000)
+    localStorage.setItem('shp.filters', JSON.stringify({ ...DEFAULT_FILTERS, furnishedOnly: true, maxCommute: 15 }))
+    const { user } = renderApp('/results')
+    const sidebar = screen.getByRole('complementary', { name: 'Filters' })
+    expect(within(screen.getByRole('list', { name: 'Applied filters' })).getAllByRole('button')).toHaveLength(2)
+    await user.click(within(sidebar).getByRole('button', { name: 'Clear all' }))
+    expect(screen.getAllByRole('article')).toHaveLength(expectedCount(5000))
+    expect(screen.queryByRole('list', { name: 'Applied filters' })).toBeNull()
+    expect(within(sidebar).getByRole('button', { name: 'Clear all' })).toBeDisabled()
+  })
+
+  test('on phones, All filters slides the same panel in; Escape closes it and returns focus', async () => {
     setBudget(5000)
     const { user } = renderApp('/results')
-    const n = screen.getAllByRole('article').length
-    await user.click(screen.getByRole('button', { name: 'Filters' }))
-    await user.click(screen.getByRole('button', { name: 'Studio' }))
+    const opener = screen.getByRole('button', { name: 'All filters' })
+    await user.click(opener)
+    const drawer = screen.getByRole('dialog', { name: 'Filters' })
+    await user.click(within(drawer).getByRole('checkbox', { name: 'Furnished only' }))
+    const furnished = applyFilters(evaluate(getAll(), 5000), { ...DEFAULT_FILTERS, furnishedOnly: true }).length
+    expect(screen.getAllByRole('article')).toHaveLength(furnished)
+    expect(screen.getByRole('button', { name: 'All filters (1)' })).toBeInTheDocument()
     await user.keyboard('{Escape}')
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.getAllByRole('article')).toHaveLength(n)
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.getByRole('button', { name: 'All filters (1)' })).toHaveFocus()
+  })
+
+  test('the drawer closes with its Show button', async () => {
+    setBudget(5000)
+    const { user } = renderApp('/results')
+    await user.click(screen.getByRole('button', { name: 'All filters' }))
+    const drawer = screen.getByRole('dialog', { name: 'Filters' })
+    await user.click(within(drawer).getByRole('button', { name: `Show ${expectedCount(5000)} places` }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  test('when no place matches the filters at any price, offers to clear them', async () => {
+    setBudget(300)
+    localStorage.setItem('shp.filters', JSON.stringify({ ...DEFAULT_FILTERS, bedrooms: 3, types: ['studio'] }))
+    const { user } = renderApp('/results')
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }))
+    expect(screen.queryByRole('list', { name: 'Applied filters' })).toBeNull()
   })
 
   test('without a budget, sends the student to the welcome screen', () => {

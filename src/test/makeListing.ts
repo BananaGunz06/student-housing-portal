@@ -22,6 +22,7 @@ export function makeListing(overrides: Partial<Listing> = {}): Listing {
     availableFrom: '2027-01',
     included: [],
     description: '',
+    poster: { name: 'Sam K.', role: 'landlord', replyTime: 'Usually replies within a day' },
     ...overrides,
   }
 }

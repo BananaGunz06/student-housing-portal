@@ -117,5 +117,31 @@ for (const [type, bedrooms, bathrooms, lo, hi, count] of mix) {
   }
 }
 
+// Posters use their own seed so the listing fields above never change.
+// Phones are in the reserved fictional 555-01xx range and emails use
+// example.com, so no real person or company is listed.
+seed = 20261111
+const firstNames = ['Sam', 'Priya', 'Daniel', 'Mei', 'Omar', 'Grace', 'Luca', 'Aisha', 'Tom', 'Nadia', 'Ben', 'Hana', 'Marco', 'Leah', 'Ravi', 'Chloe', 'Kwame', 'Ines', 'Jordan', 'Sofia']
+const lastInitials = 'ABCDFGHJKLMNPRSTW'
+const companies = ['Bluebird Rentals', 'Cedarline Property Co.', 'Lantern Lane Homes', 'Northstar Student Suites']
+const replyTimes = ['Usually replies within a few hours', 'Usually replies within a day', 'Usually replies within a day', 'Usually replies within 2 days']
+const slug = (s) => s.toLowerCase().replace(/[^a-z]+/g, '.').replace(/^\.|\.$/g, '')
+let phoneN = 0
+for (const l of listings) {
+  const role =
+    l.type === 'room' ? (chance(0.35) ? 'student-sublet' : 'landlord')
+    : l.type === 'apartment' || l.type === 'studio' ? (chance(0.6) ? 'property-manager' : 'landlord')
+    : 'landlord'
+  const name = role === 'property-manager' ? pick(companies) : `${pick(firstNames)} ${pick([...lastInitials])}.`
+  // About half share nothing beyond in-app messages.
+  const r = rand()
+  const sharePhone = r >= 0.5 && r < 0.65 || r >= 0.85
+  const shareEmail = r >= 0.65
+  const poster = { name, role, replyTime: role === 'property-manager' ? replyTimes[0] : pick(replyTimes) }
+  if (sharePhone) poster.phone = `519-555-01${String(phoneN++ % 100).padStart(2, '0')}`
+  if (shareEmail) poster.email = `${slug(name)}@example.com`
+  l.poster = poster
+}
+
 writeFileSync('src/data/listings.json', JSON.stringify(listings, null, 2) + '\n')
 console.log(`${listings.length} listings`)

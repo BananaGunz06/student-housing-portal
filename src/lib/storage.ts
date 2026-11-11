@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 /** localStorage that never throws (private mode, blocked cookies, quota). */
 export const safeStorage = {
@@ -14,6 +14,13 @@ export const safeStorage = {
       window.localStorage.setItem(key, value)
     } catch {
       // Not remembered, but the app keeps working.
+    }
+  },
+  remove(key: string): void {
+    try {
+      window.localStorage.removeItem(key)
+    } catch {
+      // Nothing to forget.
     }
   },
 }
@@ -34,6 +41,22 @@ export function useLocalStorage<T>(
   initial: T,
 ): [T, (v: T | ((prev: T) => T)) => void] {
   const [value, setValue] = useState<T>(() => read(key, initial))
+  const initialRef = useRef(initial)
+  useEffect(() => {
+    initialRef.current = initial
+  })
+
+  // Another tab changed this key: follow it (without writing it back).
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      // key === null means the whole storage was cleared.
+      if (e.key !== null && e.key !== key) return
+      const next = e.key === null || e.newValue === null ? initialRef.current : read(key, initialRef.current)
+      setValue((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next))
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [key])
   const set = useCallback(
     (v: T | ((prev: T) => T)) => {
       setValue((prev) => {

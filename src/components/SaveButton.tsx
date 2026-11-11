@@ -1,3 +1,4 @@
+import { useAccount } from '../state/AccountState'
 import { useAppState } from '../state/AppState'
 
 export default function SaveButton({
@@ -9,14 +10,15 @@ export default function SaveButton({
   title: string
   className?: string
 }) {
-  const { isSaved, toggleSaved } = useAppState()
+  const { isSaved, toggleSaved, setSaved } = useAppState()
+  const { requireAccount } = useAccount()
   const saved = isSaved(id)
   return (
     <button
       type="button"
       aria-pressed={saved}
       aria-label={`Save ${title}`}
-      onClick={() => toggleSaved(id)}
+      onClick={() => (saved ? toggleSaved(id) : requireAccount('save', () => setSaved(id, true)))}
       className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border-2 px-4 font-bold ${
         saved ? 'border-ink bg-ink text-white' : 'border-ink bg-card text-ink'
       } ${className}`}

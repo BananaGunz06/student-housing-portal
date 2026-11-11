@@ -1,7 +1,9 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useId, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import CostBreakdown from '../components/CostBreakdown'
 import FitBadge from '../components/FitBadge'
+import MessageSheet from '../components/MessageSheet'
+import PosterCard from '../components/PosterCard'
 import ListingArt from '../components/ListingArt'
 import SaveButton from '../components/SaveButton'
 import { HOUSING_TYPE_LABELS } from '../data/types'
@@ -10,15 +12,17 @@ import { formatMoney } from '../lib/cost'
 import { evaluateOne } from '../lib/filters'
 import { bedroomsLabel, formatMonth } from '../lib/format'
 import { getById } from '../lib/listingsRepo'
+import { useAccount } from '../state/AccountState'
 import { useAppState } from '../state/AppState'
 import NotFound from './NotFound'
 
 const MiniMap = lazy(() => import('../components/MiniMap'))
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const id = useId()
   return (
-    <section className="mt-8">
-      <h2 className="font-display text-xl font-bold">{title}</h2>
+    <section className="mt-8" aria-labelledby={id}>
+      <h2 id={id} className="font-display text-xl font-bold">{title}</h2>
       <div className="mt-3">{children}</div>
     </section>
   )
@@ -27,6 +31,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function ListingDetail() {
   const { id = '' } = useParams()
   const { budget } = useAppState()
+  const { requireAccount } = useAccount()
+  const [messaging, setMessaging] = useState(false)
+  const [sentNote, setSentNote] = useState(false)
   const listing = getById(id)
   if (!listing) {
     return <NotFound title="We couldn’t find that place" body="It may have been taken off the list." />
@@ -60,6 +67,10 @@ export default function ListingDetail() {
 
         <Section title="What you’d really pay each month">
           <CostBreakdown listing={l} cost={cost} budget={budget} />
+        </Section>
+
+        <Section title="Posted by">
+          <PosterCard listing={l} onMessage={() => requireAccount('message', () => setMessaging(true))} />
         </Section>
 
         <Section title="Getting to campus">
@@ -104,13 +115,54 @@ export default function ListingDetail() {
 
       <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-[1050] border-t border-line bg-card/95 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-2">
-          <p>
+          <p className="leading-tight">
             <span className="font-display text-2xl font-bold">{formatMoney(cost.total)}</span>
-            <span className="text-sm text-ink-soft"> a month, all-in</span>
+            <span className="block text-sm text-ink-soft sm:inline"> a month, all-in</span>
           </p>
-          <SaveButton id={l.id} title={l.title} />
+          <div className="flex shrink-0 gap-2">
+            <SaveButton id={l.id} title={l.title} />
+            <button
+              type="button"
+              onClick={() => requireAccount('message', () => setMessaging(true))}
+              className="inline-flex min-h-11 items-center rounded-full bg-ink px-4 font-bold text-white"
+            >
+              Message
+            </button>
+          </div>
         </div>
       </div>
+
+      <div
+        role="status"
+        className="fixed inset-x-0 bottom-[calc(7.75rem+env(safe-area-inset-bottom))] z-[1060] flex justify-center px-4 empty:hidden"
+      >
+        {sentNote && (
+          <p className="flex max-w-md items-center gap-3 rounded-2xl bg-fits px-4 py-2 text-white shadow-lg">
+            <span>
+              Saved to Messages.{' '}
+              <Link to={`/messages/${l.id}`} className="font-bold underline">
+                Open conversation
+              </Link>
+            </span>
+            <button
+              type="button"
+              onClick={() => setSentNote(false)}
+              className="-mr-2 min-h-11 min-w-11 rounded-full font-bold"
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </p>
+        )}
+      </div>
+
+      {messaging && (
+        <MessageSheet
+          listing={l}
+          onClose={() => setMessaging(false)}
+          onSent={() => setSentNote(true)}
+        />
+      )}
     </article>
   )
 }

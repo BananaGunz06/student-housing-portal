@@ -16,3 +16,21 @@ export function bedroomsLabel(l: Pick<Listing, 'bedrooms' | 'type'>): string {
 export function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`
 }
+
+/** ISO timestamp → 'Nov 11' (adds the year when it isn't this year). */
+export function formatDay(iso: string, now = new Date()): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('en-CA', {
+    month: 'short',
+    day: 'numeric',
+    ...(d.getFullYear() !== now.getFullYear() && { year: 'numeric' }),
+  })
+}
+
+/** ISO timestamp → 'Nov 11, 2:05 p.m.' */
+export function formatSent(iso: string, now = new Date()): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return `${formatDay(iso, now)}, ${d.toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit' })}`
+}

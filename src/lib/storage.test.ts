@@ -44,4 +44,52 @@ describe('useLocalStorage', () => {
     act(() => result.current[1](2))
     expect(result.current[0]).toBe(2)
   })
+
+  describe('changes from another tab', () => {
+    const fromOtherTab = (key: string | null, newValue: string | null) =>
+      act(() => void window.dispatchEvent(new StorageEvent('storage', { key, newValue })))
+
+    test('follows the new value for its key', () => {
+      const { result } = renderHook(() => useLocalStorage<string[]>('k', []))
+      localStorage.setItem('k', JSON.stringify(['a']))
+      fromOtherTab('k', JSON.stringify(['a']))
+      expect(result.current[0]).toEqual(['a'])
+    })
+
+    test('ignores other keys', () => {
+      const { result } = renderHook(() => useLocalStorage('k', 1))
+      localStorage.setItem('other', '9')
+      fromOtherTab('other', '9')
+      expect(result.current[0]).toBe(1)
+    })
+
+    test('goes back to the initial value when the key is removed or storage is cleared', () => {
+      localStorage.setItem('k', '5')
+      const { result } = renderHook(() => useLocalStorage('k', 1))
+      expect(result.current[0]).toBe(5)
+      localStorage.removeItem('k')
+      fromOtherTab('k', null)
+      expect(result.current[0]).toBe(1)
+      act(() => result.current[1](8))
+      localStorage.clear()
+      fromOtherTab(null, null)
+      expect(result.current[0]).toBe(1)
+    })
+
+    test('a corrupt value from another tab falls back to the initial value', () => {
+      const { result } = renderHook(() => useLocalStorage('k', 3))
+      localStorage.setItem('k', '{nope')
+      fromOtherTab('k', '{nope')
+      expect(result.current[0]).toBe(3)
+    })
+
+    test('does not write the received value back', () => {
+      const { result } = renderHook(() => useLocalStorage('k', 0))
+      localStorage.setItem('k', '4')
+      const set = vi.spyOn(Storage.prototype, 'setItem')
+      fromOtherTab('k', '4')
+      expect(result.current[0]).toBe(4)
+      expect(set).not.toHaveBeenCalled()
+    })
+  })
 })

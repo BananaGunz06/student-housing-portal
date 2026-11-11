@@ -13,6 +13,8 @@ const ICONS = {
   list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
   map: 'M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3zM9 3v15M15 6v15',
   saved: 'M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z',
+  account: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  messages: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
 }
 
 export default function BottomNav() {
@@ -28,6 +30,8 @@ export default function BottomNav() {
       icon: ICONS.saved,
       active: pathname === '/saved' || pathname === '/compare',
     },
+    { to: '/messages', label: 'Messages', icon: ICONS.messages, active: pathname.startsWith('/messages') },
+    { to: '/account', label: 'Account', icon: ICONS.account, active: pathname === '/account' },
   ]
   return (
     <nav

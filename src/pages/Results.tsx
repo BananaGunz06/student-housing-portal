@@ -1,15 +1,16 @@
-import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useId, useMemo, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import BudgetInput from '../components/BudgetInput'
-import FilterSheet from '../components/FilterSheet'
+import FilterChips from '../components/FilterChips'
+import FilterDrawer from '../components/FilterDrawer'
+import FilterPanel from '../components/FilterPanel'
 import ListingCard from '../components/ListingCard'
 import { formatMoney } from '../lib/cost'
 import {
-  activeFilterCount,
   applyFilters,
+  DEFAULT_FILTERS,
   evaluate,
   nearestBudgetWithResults,
-  type Filters,
 } from '../lib/filters'
 import { plural } from '../lib/format'
 import { getAll } from '../lib/listingsRepo'
@@ -21,21 +22,20 @@ export default function Results() {
   const { budget, setBudget, filters, setFilters } = useAppState()
   const [params, setParams] = useSearchParams()
   const [editing, setEditing] = useState(false)
-  const [sheetOpen, setSheetOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const sidebarTitleId = useId()
   const view = params.get('view') === 'map' ? 'map' : 'list'
 
   const results = useMemo(() => evaluate(getAll(), budget ?? 0), [budget])
   const shown = useMemo(() => applyFilters(results, filters), [results, filters])
   const onMap = useMemo(() => applyFilters(results, { ...filters, showOver: true }), [results, filters])
-  const countFor = useCallback((f: Filters) => applyFilters(results, f).length, [results])
-  const closeSheet = useCallback(() => setSheetOpen(false), [])
+  const closeDrawer = useCallback(() => setDrawerOpen(false), [])
 
   if (budget === null) return <Navigate to="/" replace />
 
   const fits = shown.filter((r) => r.fit === 'fits').length
   const stretch = shown.filter((r) => r.fit === 'stretch').length
   const over = shown.length - fits - stretch
-  const nFilters = activeFilterCount(filters)
   const suggestion = shown.length === 0 ? nearestBudgetWithResults(getAll(), filters, budget) : null
 
   const setView = (v: 'list' | 'map') => setParams(v === 'map' ? { view: 'map' } : {}, { replace: true })
@@ -45,7 +45,7 @@ export default function Results() {
   return (
     <>
       <header className="sticky top-0 z-[1050] border-b border-line bg-paper/95 backdrop-blur">
-        <div className="mx-auto max-w-5xl px-4 py-3">
+        <div className="mx-auto max-w-7xl px-4 py-3">
           <div className="flex items-end justify-between gap-3">
             <div>
               <p className="text-sm text-ink-soft">Your budget, all-in</p>
@@ -73,7 +73,7 @@ export default function Results() {
             </div>
           )}
           <div className="mt-3 flex gap-2">
-            <div className="flex flex-1 rounded-full border-2 border-ink p-0.5" role="group" aria-label="View">
+            <div className="flex flex-1 rounded-full lg:max-w-xs border-2 border-ink p-0.5" role="group" aria-label="View">
               <button type="button" aria-pressed={view === 'list'} className={toggle(view === 'list')} onClick={() => setView('list')}>
                 List
               </button>
@@ -81,23 +81,27 @@ export default function Results() {
                 Map
               </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setSheetOpen(true)}
-              className="min-h-12 rounded-full border-2 border-ink bg-card px-4 font-bold"
-            >
-              Filters{nFilters > 0 && ` (${nFilters})`}
-            </button>
           </div>
         </div>
       </header>
 
+      <div className="mx-auto max-w-7xl lg:grid lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-8 lg:px-4">
+        <aside
+          aria-labelledby={sidebarTitleId}
+          className="sticky top-40 hidden max-h-[calc(100dvh-11rem)] self-start overflow-y-auto pt-5 pr-1 pb-6 lg:block"
+        >
+          <FilterPanel filters={filters} onChange={setFilters} count={shown.length} titleId={sidebarTitleId} />
+        </aside>
+        <div className="min-w-0">
+          <div className="px-4 pt-4 lg:px-0">
+            <FilterChips filters={filters} onChange={setFilters} onOpenAll={() => setDrawerOpen(true)} />
+          </div>
       {view === 'map' ? (
         <Suspense fallback={<p className="p-4">Loading map…</p>}>
           <MapView results={onMap} onShowList={() => setView('list')} />
         </Suspense>
       ) : (
-        <section className="mx-auto max-w-5xl px-4 pt-5" aria-labelledby="results-title">
+        <section className="px-4 pt-4 lg:px-0" aria-labelledby="results-title">
           <h1 id="results-title" className="font-display text-2xl font-bold">
             Places in Guelph for your budget
           </h1>
@@ -128,16 +132,16 @@ export default function Results() {
                   <p className="mt-2 text-ink-soft">No place matches these filters at any price.</p>
                   <button
                     type="button"
-                    onClick={() => setSheetOpen(true)}
-                    className="mt-4 min-h-12 rounded-full bg-ink px-6 font-bold text-white"
+                    onClick={() => setFilters({ ...DEFAULT_FILTERS })}
+                    className="mt-4 min-h-12 rounded-full bg-ink px-6 font-bold text-on-ink"
                   >
-                    Change filters
+                    Clear filters
                   </button>
                 </>
               )}
             </div>
           ) : (
-            <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {shown.map((r) => (
                 <li key={r.listing.id} className="flex">
                   <div className="w-full">
@@ -153,8 +157,11 @@ export default function Results() {
         </section>
       )}
 
-      {sheetOpen && (
-        <FilterSheet initial={filters} countFor={countFor} onApply={setFilters} onClose={closeSheet} />
+        </div>
+      </div>
+
+      {drawerOpen && (
+        <FilterDrawer filters={filters} onChange={setFilters} count={shown.length} onClose={closeDrawer} />
       )}
     </>
   )

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { makeListing } from '../test/makeListing'
-import { DEFAULT_FILTERS, applyFilters, evaluate, nearestBudgetWithResults } from './filters'
+import { DEFAULT_FILTERS, applyFilters, evaluate, filterChips, nearestBudgetWithResults, type Filters } from './filters'
 
 const cheap = makeListing({ id: 'a', rent: 700 })
 const mid = makeListing({ id: 'b', rent: 900, type: 'studio', bedrooms: 0, furnished: true })
@@ -74,5 +74,43 @@ describe('nearestBudgetWithResults', () => {
     expect(
       nearestBudgetWithResults(all, { ...DEFAULT_FILTERS, types: ['basement'] }, 500),
     ).toBeNull()
+  })
+})
+
+describe('filterChips', () => {
+  test('no chips for the defaults', () => {
+    expect(filterChips(DEFAULT_FILTERS)).toEqual([])
+  })
+
+  test('one chip per applied filter, each removing only itself', () => {
+    const f: Filters = {
+      bedrooms: 0,
+      types: ['room', 'studio'],
+      furnishedOnly: true,
+      maxCommute: 15,
+      moveIn: '2027-01',
+      showOver: true,
+    }
+    const chips = filterChips(f)
+    expect(chips.map((c) => c.label)).toEqual([
+      'Studio',
+      'Room in shared house',
+      'Studio apartment',
+      'Furnished',
+      'Commute ≤ 15 min',
+      'Available by January 2027',
+      'Including over budget',
+    ])
+    expect(chips[0].without).toEqual({ ...f, bedrooms: 'any' })
+    expect(chips[1].without).toEqual({ ...f, types: ['studio'] })
+    expect(chips[4].without).toEqual({ ...f, maxCommute: null })
+    expect(new Set(chips.map((c) => c.id)).size).toBe(chips.length)
+  })
+
+  test('bedroom labels', () => {
+    const label = (bedrooms: Filters['bedrooms']) => filterChips({ ...DEFAULT_FILTERS, bedrooms })[0].label
+    expect(label(1)).toBe('1 bedroom')
+    expect(label(2)).toBe('2 bedrooms')
+    expect(label(3)).toBe('3+ bedrooms')
   })
 })

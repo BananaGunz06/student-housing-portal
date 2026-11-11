@@ -1,12 +1,18 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import BottomNav from './components/BottomNav'
+import Account from './pages/Account'
 import Compare from './pages/Compare'
+import Conversation from './pages/Conversation'
 import ListingDetail from './pages/ListingDetail'
+import Messages from './pages/Messages'
 import NotFound from './pages/NotFound'
 import Results from './pages/Results'
 import Saved from './pages/Saved'
 import Welcome from './pages/Welcome'
+import { defaultBackend } from './lib/backend'
+import { AccountProvider } from './state/AccountState'
 import { AppStateProvider, useAppState } from './state/AppState'
+import { CloudSync } from './state/CloudSync'
 
 function Home() {
   const { budget } = useAppState()
@@ -40,6 +46,9 @@ export function AppRoutes() {
         <Route path="/listing/:id" element={<ListingDetail />} />
         <Route path="/saved" element={<Saved />} />
         <Route path="/compare" element={<Compare />} />
+        <Route path="/messages" element={<Messages />} />
+        <Route path="/messages/:listingId" element={<Conversation />} />
+        <Route path="/account" element={<Account />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
@@ -49,9 +58,12 @@ export function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <AppStateProvider>
-        <AppRoutes />
-      </AppStateProvider>
+      <AccountProvider backend={defaultBackend}>
+        <AppStateProvider>
+          <CloudSync />
+          <AppRoutes />
+        </AppStateProvider>
+      </AccountProvider>
     </BrowserRouter>
   )
 }
