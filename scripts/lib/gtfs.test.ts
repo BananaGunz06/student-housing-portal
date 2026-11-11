@@ -32,6 +32,8 @@ r99,1,T4,Loop,S1
 rb,1,TB,Brew,S1
 r7,2,T7,Sat,S1
 r50,1,T50,Loop,S3
+r99,1,T5,Double,S1
+r99,1,T6,Blank,S1
 `,
   // Times carry a leading space like the real feed.
   stop_times: `trip_id,arrival_time,departure_time,stop_id,stop_sequence
@@ -53,6 +55,13 @@ T4, 9:30:00, 9:30:00,U2,4
 TB, 7:00:00, 7:00:00,X,1
 TB, 7:10:00, 7:10:00,U1,2
 T7, 8:00:00, 8:00:00,Y,1
+T5, 7:30:00, 7:30:00,F,1
+T5, 7:40:00, 7:40:00,U1,2
+T5, 7:45:00, 7:45:00,G,3
+T5, 7:55:00, 7:55:00,U2,4
+T6, 8:30:00,,H,1
+T6,,,I,2
+T6,, 8:40:00,U1,3
 T50, 25:05:00, 25:05:00,U2,1
 T50, 25:20:00, 25:20:00,A,2
 `,
@@ -63,6 +72,10 @@ C,Away From Campus,43.5400,-80.2000
 E,Edinburgh E,43.5250,-80.2000
 U1,University Centre 1,43.5310,-80.2100
 U2,University Centre 2,43.5311,-80.2101
+F,Gordon F,43.5100,-80.2000
+G,Gordon G,43.5110,-80.2000
+H,Gordon H,43.5120,-80.2000
+I,Gordon I,43.5130,-80.2000
 X,Brewery,43.55,-80.3
 Y,Saturday Stop,43.56,-80.3
 `,
@@ -140,6 +153,7 @@ describe('medianMinutes', () => {
     expect(medianMinutes([5, 6])).toBe(6)
     expect(medianMinutes([12, 15, 10])).toBe(12)
     expect(medianMinutes([0.2])).toBe(1)
+    expect(medianMinutes([Number.NaN, 5, 6])).toBe(6)
   })
 })
 
@@ -188,6 +202,22 @@ describe('buildNetwork', () => {
 
   it('rounds an even-count median up', () => {
     expect(stop('E')?.toCampus).toEqual({ r99: 6 })
+  })
+
+  it('uses the FIRST campus arrival after the stop, even when the trip passes campus twice', () => {
+    // F's only in-window trip is F, U1 (7:40), G, U2 (7:55): 10 min to U1, not 25 to U2.
+    expect(stop('F')?.toCampus).toEqual({ r99: 10 })
+    // G comes after U1 and before U2: 10 min to U2 (a "first campus stop anywhere" rule would drop it).
+    expect(stop('G')?.toCampus).toEqual({ r99: 10 })
+  })
+
+  it('falls back between arrival and departure and skips rows with no usable time', () => {
+    // H: departure blank, arrival 8:30; U1: arrival blank, departure 8:40 -> 10 min.
+    expect(stop('H')?.toCampus).toEqual({ r99: 10 })
+    // I has neither time: served, but no ride time and no NaN/null.
+    expect(stop('I')?.routes).toEqual(['r99'])
+    expect(stop('I')?.toCampus).toEqual({})
+    expect(JSON.stringify(stops)).not.toContain('null')
   })
 
   it('gives no ride time to a stop served only after the campus', () => {
@@ -263,8 +293,8 @@ Q2, 9:20:00, 9:20:00,U1,2
     const by = activeServicesByDate(parseCsv(base.calendar), parseCsv(base.calendar_dates))
     // Mon: 1 + 2 = 3 trips; Tue: 2; Wed: 1.
     expect(representativeWeekday(by, parseCsv(base.trips))?.date).toBe('20260105')
-    const tie = representativeWeekday(by, parseCsv(base.trips).filter((t) => t.trip_id !== 'Q2'))
-    // Mon: 2, Tue: 1, Wed: 1.
+    // Without P1: Mon 2 (Q1, Q2), Tue 2, Wed 0 -> a real tie, so the earlier Monday wins.
+    const tie = representativeWeekday(by, parseCsv(base.trips).filter((t) => t.trip_id !== 'P1'))
     expect(tie?.date).toBe('20260105')
   })
 
@@ -277,8 +307,8 @@ Q2, 9:20:00, 9:20:00,U1,2
   })
 
   it('does not use a service removed on the chosen date', () => {
-    // Drop Q2 so Tue (service 12 only, service 1 removed) ties Mon on fewer trips; force Tue by
-    // making service 12 the larger one.
+    // Service 12 is added only on Tue and service 1 is removed that day, so Tue runs just the
+    // two r12 trips and beats Mon (one r1 trip). Route 1 must not appear on the chosen Tuesday.
     const heavy = { ...base, calendar_dates: 'service_id,date,exception_type\n12,20260106,1\n1,20260106,2\n', trips: base.trips }
     const { routes, representativeDate } = buildNetwork(heavy)
     expect(representativeDate).toBe('2026-01-06')

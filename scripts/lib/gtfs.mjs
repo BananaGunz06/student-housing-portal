@@ -104,6 +104,18 @@ const dayOfWeek = (d) => new Date(Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +
 const ymd = (dt) => dt.toISOString().slice(0, 10).replaceAll('-', '')
 
 /**
+ * First of the given time strings that parses to a number, else NaN.
+ * @param {...string} times
+ */
+function firstFinite(...times) {
+  for (const t of times) {
+    const n = t ? parseTime(t) : NaN
+    if (Number.isFinite(n)) return n
+  }
+  return NaN
+}
+
+/**
  * Service ids active on each date: calendar.txt weekday flags inside start/end, plus
  * calendar_dates exception 1 (added), minus exception 2 (removed).
  * @param {Row[]} calendar
@@ -223,7 +235,7 @@ const round5 = (n) => Math.round(n * 1e5) / 1e5
  * @param {number[]} values
  */
 export function medianMinutes(values) {
-  const v = values.slice().sort((a, b) => a - b)
+  const v = values.filter(Number.isFinite).sort((a, b) => a - b)
   const mid = v.length >> 1
   const med = v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2
   return Math.max(1, Math.ceil(med - 1e-9))
@@ -251,9 +263,11 @@ export function buildNetwork(files, options = {}) {
   const winEnd = options.windowEnd ?? WINDOW_END
 
   const allTrips = parseCsv(files.trips)
+  const allRoutes = parseCsv(files.routes)
+  const keptRouteIds = new Set(allRoutes.filter((r) => !excluded.has(r.route_short_name)).map((r) => r.route_id))
   const rep = representativeWeekday(
     activeServicesByDate(parseCsv(files.calendar), parseCsv(files.calendar_dates ?? '')),
-    allTrips,
+    allTrips.filter((t) => keptRouteIds.has(t.route_id)),
   )
   const services = rep?.services ?? new Set()
   const trips = allTrips.filter((t) => services.has(t.service_id))
@@ -262,7 +276,7 @@ export function buildNetwork(files, options = {}) {
     if (!tripsByRoute.has(t.route_id)) tripsByRoute.set(t.route_id, [])
     tripsByRoute.get(t.route_id).push(t)
   }
-  const routes = parseCsv(files.routes)
+  const routes = allRoutes
     .filter((r) => !excluded.has(r.route_short_name) && tripsByRoute.has(r.route_id))
     .sort((a, b) => byShortName(a.route_short_name, b.route_short_name))
   const keptIds = new Set(routes.map((r) => r.route_id))
@@ -332,9 +346,11 @@ export function buildNetwork(files, options = {}) {
         continue
       }
       if (nextCampus < 0) continue
-      const arrival = parseTime(list[nextCampus].arrival_time || list[nextCampus].departure_time)
+      // Blank times fall back to the other column; rows with neither are skipped.
+      const arrival = firstFinite(list[nextCampus].arrival_time, list[nextCampus].departure_time)
+      const depart = firstFinite(st.departure_time, st.arrival_time)
+      if (!Number.isFinite(arrival) || !Number.isFinite(depart)) continue
       if (arrival < winStart || arrival > winEnd) continue
-      const depart = parseTime(st.departure_time || st.arrival_time)
       const key = `${st.stop_id}|${routeId}`
       if (!rides.has(key)) rides.set(key, [])
       rides.get(key)?.push((arrival - depart) / 60)
@@ -350,7 +366,7 @@ export function buildNetwork(files, options = {}) {
       /** @type {Record<string, number>} */
       const toCampus = {}
       for (const rid of routeIds) {
-        const v = rides.get(`${id}|${rid}`)
+        const v = rides.get(`${id}|${rid}`)?.filter(Number.isFinite)
         if (v?.length) toCampus[rid] = medianMinutes(v)
       }
       /** @type {Record<string, unknown>} */
