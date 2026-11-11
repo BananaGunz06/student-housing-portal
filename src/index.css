@@ -8,6 +8,8 @@
   --color-card: #ffffff;
   --color-ink: #1c2a35;
   --color-ink-soft: #4a5a66;
+  /* Text on ink-filled buttons and chips. */
+  --color-on-ink: #ffffff;
   --color-line: #d6ddd5;
   --color-highlight: #f1e84a;
   --color-fits: #1f7a4d;
@@ -54,6 +56,15 @@ body {
 
 input[type='range'] {
   accent-color: var(--color-ink);
+}
+
+/* Filter panel sliding in from the left on phones. */
+@keyframes drawer-in {
+  from { transform: translateX(-100%); }
+  to { transform: none; }
+}
+.drawer-in {
+  animation: drawer-in 180ms ease-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
