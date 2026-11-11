@@ -24,8 +24,8 @@ export interface AppState {
   lastShared: SharedDetails
   /** Budget, filters, saved places and messages as the account would keep them. */
   deviceState: CloudState
-  /** Take everything from a cloud state (keeping anything added a moment ago); a null budget or filters keeps this device's. */
-  replaceAll: (s: CloudState, overwrite?: boolean) => void
+  /** Take everything from a cloud state (`from` is the device state it was worked out from; anything added since is kept); a null budget or filters keeps this device's. */
+  replaceAll: (s: CloudState, from?: CloudState) => void
   /** Forget saved places and messages (on sign out); keeps budget and filters. */
   clearPersonal: () => void
 }
@@ -91,30 +91,23 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     latest.current = deviceState
   })
   const replaceAll = useCallback(
-    (s: CloudState, overwrite = false) => {
-      if (overwrite) {
-        // What is on the device is being discarded, so write exactly `s`.
-        if (s.budget !== null) setBudgetRaw(s.budget)
-        if (s.filters) setFilters(s.filters)
-        setSavedRaw(s.savedIds)
-        setMessages(s.messages)
-        return
-      }
-      const cur = latest.current
+    (s: CloudState, from?: CloudState) => {
+      const cur = from ?? latest.current
+      const differs = (x: unknown, y: unknown) => JSON.stringify(x) !== JSON.stringify(y)
       if (s.budget !== null && s.budget !== cur.budget) setBudgetRaw(s.budget)
-      if (s.filters && JSON.stringify(s.filters) !== JSON.stringify(cur.filters)) setFilters(s.filters)
-      // Anything added since `s` was worked out (a save made while the account loaded) is kept.
-      if (JSON.stringify(s.savedIds) !== JSON.stringify(cur.savedIds)) {
+      if (s.filters && differs(s.filters, cur.filters)) setFilters(s.filters)
+      // Whatever was added after `cur` was read (a save made while the account loaded) is kept.
+      if (differs(s.savedIds, cur.savedIds)) {
         setSavedRaw((prev) => {
           const old = (Array.isArray(prev) ? prev : []).filter((x) => getById(x))
-          return [...s.savedIds, ...old.filter((x) => !s.savedIds.includes(x))]
+          return [...s.savedIds, ...old.filter((x) => !s.savedIds.includes(x) && !cur.savedIds.includes(x))]
         })
       }
-      if (JSON.stringify(s.messages) !== JSON.stringify(cur.messages)) {
+      if (differs(s.messages, cur.messages)) {
         setMessages((prev) => {
           const old = (Array.isArray(prev) ? prev : []).filter(isMessage)
-          const ids = new Set(s.messages.map((m) => m.id))
-          return [...s.messages, ...old.filter((m) => !ids.has(m.id))]
+          const known = new Set([...s.messages, ...cur.messages].map((m) => m.id))
+          return [...s.messages, ...old.filter((m) => !known.has(m.id))]
         })
       }
     },

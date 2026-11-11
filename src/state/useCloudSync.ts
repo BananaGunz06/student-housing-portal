@@ -1,13 +1,31 @@
 import { useCallback, useEffect, useRef } from 'react'
 import type { CloudState } from '../lib/backend/types'
 import { safeStorage } from '../lib/storage'
-import { cleanCloudState, mergeStates } from '../lib/sync'
+import { cleanCloudState, EMPTY_CLOUD, threeWayMerge } from '../lib/sync'
 import { useAccount } from './AccountState'
 import { useAppState } from './AppState'
 
 const DEBOUNCE_MS = 800
 /** Which account the saved places and messages on this device belong to. */
 const OWNER_KEY = 'shp.owner'
+/** The account's data as last loaded or saved on this device, for telling who changed what. */
+const SYNCED_KEY = 'shp.synced'
+
+function forgetOwner() {
+  safeStorage.remove(OWNER_KEY)
+  safeStorage.remove(SYNCED_KEY)
+}
+
+function readSnapshot(uid: string): CloudState {
+  if (safeStorage.get(OWNER_KEY) !== uid) return EMPTY_CLOUD
+  const raw = safeStorage.get(SYNCED_KEY)
+  if (raw === null) return EMPTY_CLOUD
+  try {
+    return cleanCloudState(JSON.parse(raw))
+  } catch {
+    return EMPTY_CLOUD
+  }
+}
 const json = (s: CloudState) => JSON.stringify(s)
 
 /**
@@ -87,7 +105,10 @@ export function useCloudSync(): void {
         m.inflight = null
         m.lastSaved = text
         m.failed = false
-        if (m.loadedFor) safeStorage.set(OWNER_KEY, m.loadedFor)
+        if (m.loadedFor) {
+          safeStorage.set(OWNER_KEY, m.loadedFor)
+          safeStorage.set(SYNCED_KEY, text)
+        }
       }
     },
     [backend, setSyncStatus],
@@ -106,13 +127,15 @@ export function useCloudSync(): void {
         const owner = safeStorage.get(OWNER_KEY)
         const foreign = owner !== null && owner !== uid
         const device = foreign ? { ...m.device, savedIds: [], messages: [] } : m.device
-        const merged = mergeStates(device, account)
+        const merged = threeWayMerge(foreign ? EMPTY_CLOUD : readSnapshot(uid), device, account)
+        if (foreign) forgetOwner()
         // Record before replacing, so the change this causes is not saved again.
         m.lastSaved = json(account)
         m.loadedFor = uid
         m.failed = false
         safeStorage.set(OWNER_KEY, uid)
-        replaceAll(merged, foreign)
+        if (json(merged) === json(account)) safeStorage.set(SYNCED_KEY, json(account))
+        replaceAll(merged, m.device)
         m.device = merged
         m.loading = false
         await save(gen)
@@ -143,7 +166,7 @@ export function useCloudSync(): void {
       catchUp(userId)
     } else if (bag.current.previousUser) {
       clearPersonal()
-      safeStorage.remove(OWNER_KEY)
+      forgetOwner()
       setSyncStatus('idle')
     }
     bag.current.previousUser = userId
@@ -154,7 +177,7 @@ export function useCloudSync(): void {
   useEffect(() => {
     if (status === 'signed-out' && !restoreFailed && safeStorage.get(OWNER_KEY) !== null) {
       clearPersonal()
-      safeStorage.remove(OWNER_KEY)
+      forgetOwner()
     }
   }, [status, restoreFailed, clearPersonal])
 

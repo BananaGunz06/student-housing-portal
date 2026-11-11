@@ -305,4 +305,54 @@ describe('cloud sync', () => {
     expect(ref.app.savedIds).toEqual([ID1])
     expect(localStorage.getItem('shp.owner')).toBe('user-1')
   })
+
+  const synced = (savedIds: string[]) => ({ budget: 800, filters: DEFAULT_FILTERS, savedIds, messages: [] })
+  function ownDevice(savedIds: string[], snapshot: string[]) {
+    localStorage.setItem('shp.owner', 'user-1')
+    localStorage.setItem('shp.synced', JSON.stringify(synced(snapshot)))
+    localStorage.setItem('shp.budget', '800')
+    localStorage.setItem('shp.filters', JSON.stringify(DEFAULT_FILTERS))
+    localStorage.setItem('shp.saved', JSON.stringify(savedIds))
+  }
+
+  it('keeps a place removed on another device removed', async () => {
+    ownDevice([ID1, ID2], [ID1, ID2])
+    const fake = createFakeBackend({ users: [{ ...U, state: synced([ID1]) }], sessionEmail: U.email })
+    const spy = vi.spyOn(fake, 'saveState')
+    const ref = setup(fake)
+    await waitUntil(() => expect(ref.account.syncStatus).toBe('saved'))
+    await flush(3000)
+    expect(ref.app.savedIds).toEqual([ID1])
+    expect(spy).not.toHaveBeenCalled()
+    expect(fake.stateOf(U.email).savedIds).toEqual([ID1])
+  })
+
+  it('keeps a removal made while the account is still loading', async () => {
+    ownDevice([ID1, ID2], [ID1, ID2])
+    const fake = createFakeBackend({ users: [{ ...U, state: synced([ID1, ID2]) }], sessionEmail: U.email })
+    const real = fake.loadState.bind(fake)
+    let release = () => {}
+    vi.spyOn(fake, 'loadState').mockImplementation(() => new Promise((res) => (release = () => void real().then(res))))
+    const ref = setup(fake)
+    await flush(100)
+    act(() => ref.app.setSaved(ID2, false))
+    await flush(100)
+    await act(async () => release())
+    await flush(3000)
+    expect(ref.app.savedIds).toEqual([ID1])
+    expect(fake.stateOf(U.email).savedIds).toEqual([ID1])
+    expect(ref.account.syncStatus).toBe('saved')
+  })
+
+  it('still unions a device with no history into the first account it signs in to', async () => {
+    localStorage.setItem('shp.saved', JSON.stringify([ID1]))
+    const fake = createFakeBackend({ users: [{ ...U, state: { savedIds: [ID2] } }] })
+    const ref = setup(fake)
+    await flush()
+    await act(async () => void (await ref.account.signIn(U.email, U.password)))
+    await waitUntil(() => expect(ref.account.syncStatus).toBe('saved'))
+    await flush(2000)
+    expect(ref.app.savedIds).toEqual([ID2, ID1])
+    expect(fake.stateOf(U.email).savedIds).toEqual([ID2, ID1])
+  })
 })

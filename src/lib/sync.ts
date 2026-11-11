@@ -41,16 +41,39 @@ export function cleanCloudState(raw: unknown): CloudState {
   return { budget, filters: cleanFilters(raw.filters), savedIds, messages }
 }
 
-/** Combine what this device has with what the account has. The account wins when it has a budget. */
-export function mergeStates(device: CloudState, account: CloudState): CloudState {
-  const useAccount = account.budget !== null
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
+
+/**
+ * Combine this device with the account, using `base` (the copy last synced on
+ * this device; EMPTY_CLOUD if none) to tell what changed where.
+ * - Saved places: the account's list, plus places added here, minus places removed here.
+ * - Messages are never deleted, so they are a union by id.
+ * - Budget and filters: a change made here wins; otherwise the account's, and with no
+ *   history the account wins when it has a budget.
+ */
+export function threeWayMerge(base: CloudState, device: CloudState, account: CloudState): CloudState {
+  const inBase = new Set(base.savedIds)
+  const inDevice = new Set(device.savedIds)
+  const savedIds = account.savedIds.filter((id) => !(inBase.has(id) && !inDevice.has(id)))
+  for (const id of device.savedIds) if (!inBase.has(id) && !savedIds.includes(id)) savedIds.push(id)
+
+  const baseMsgs = new Set(base.messages.map((m) => m.id))
   const byId = new Map<string, Message>()
-  for (const m of [...account.messages, ...device.messages]) if (!byId.has(m.id)) byId.set(m.id, m)
+  for (const m of account.messages) byId.set(m.id, m)
+  for (const m of device.messages) if (!baseMsgs.has(m.id) && !byId.has(m.id)) byId.set(m.id, m)
+
+  const budgetChangedHere = base.budget !== null && device.budget !== base.budget
+  const filtersChangedHere = base.filters !== null && !same(device.filters, base.filters)
+  const hasHistory = base.budget !== null || base.filters !== null
   return {
-    budget: useAccount ? account.budget : device.budget,
-    filters: useAccount ? (account.filters ?? device.filters) : device.filters,
-    savedIds: [...new Set([...account.savedIds, ...device.savedIds])],
-    messages: [...byId.values()].sort((a, b) => a.sentAt.localeCompare(b.sentAt)),
+    budget: budgetChangedHere ? device.budget : (account.budget ?? device.budget),
+    filters: filtersChangedHere
+      ? device.filters
+      : account.filters && (hasHistory || account.budget !== null)
+        ? account.filters
+        : device.filters,
+    savedIds,
+    messages: [...byId.values()].sort((x, y) => x.sentAt.localeCompare(y.sentAt)),
   }
 }
 
