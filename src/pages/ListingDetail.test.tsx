@@ -1,5 +1,6 @@
 import { screen } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
+import { campusCommute, describeCommute } from '../lib/commute'
 import { formatMoney, trueMonthlyCost } from '../lib/cost'
 import { getAll } from '../lib/listingsRepo'
 import { renderApp, setBudget } from '../test/renderApp'
@@ -37,10 +38,19 @@ describe('Listing detail', () => {
     expect(screen.getByText(/over your/)).toBeInTheDocument()
   })
 
-  test('describes the commute with estimates', () => {
-    setBudget(1000)
-    renderApp(`/listing/${withExtras.id}`)
-    expect(screen.getByText(/^≈\d+ min walk/)).toBeInTheDocument()
+  test('describes a bus commute with the real route number', () => {
+    const bus = getAll().find((l) => campusCommute(l).mode === 'bus')!
+    setBudget(5000)
+    renderApp(`/listing/${bus.id}`)
+    expect(screen.getByText(/^≈\d+ min walk to stop · Route \S+( \S)? · ≈\d+ min to campus$/)).toBeInTheDocument()
+    expect(screen.getByText(describeCommute(campusCommute(bus)))).toBeInTheDocument()
+  })
+
+  test('says so when a transfer is needed', () => {
+    const transfer = getAll().find((l) => campusCommute(l).mode === 'transfer')!
+    setBudget(5000)
+    renderApp(`/listing/${transfer.id}`)
+    expect(screen.getByText('Transfer needed')).toBeInTheDocument()
   })
 
   test('an unknown listing shows a friendly not-found', () => {

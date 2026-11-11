@@ -50,14 +50,22 @@ export interface Stop {
   name: string
   lat: number
   lng: number
+  /** Ids of the routes that serve this stop. */
   routes: string[]
+  /** Typical scheduled minutes from this stop to the University Centre, per route id. */
+  toCampus: Record<string, number>
+  /** True for the University Centre platforms themselves. */
+  campus?: boolean
 }
 
 export interface Route {
   id: string
-  name: string
+  /** What riders see, e.g. "99" or "50 U". */
+  shortName: string
+  longName: string
   color: string
-  path: LatLng[]
+  /** One line per piece of the route (MultiLineString). */
+  paths: LatLng[][]
 }
 
 export const HOUSING_TYPE_LABELS: Record<HousingType, string> = {

@@ -81,8 +81,8 @@ export default function ListingDetail() {
             </Suspense>
           </div>
           <p className="mt-2 text-sm text-ink-soft">
-            Estimates. Walking uses straight-line distance plus 30% at about 80 metres a minute. Bus routes are a
-            simplified sample, not the live Guelph Transit schedule.
+            Estimates. Walking uses straight-line distance plus 30% at about 80 metres a minute. Bus times are typical
+            scheduled rides from the Guelph Transit timetable, not live arrivals.
           </p>
         </Section>
 

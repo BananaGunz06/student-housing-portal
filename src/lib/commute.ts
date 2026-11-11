@@ -5,10 +5,10 @@ import type { LatLng, Route, Stop } from '../data/types'
 /** Straight-line walking is about 30% shorter than real streets. */
 const DETOUR_FACTOR = 1.3
 const WALK_M_PER_MIN = 80
-/** About 20 km/h average bus speed including stops. */
-const BUS_M_PER_MIN = 330
 /** Under this many minutes, walking is the obvious choice. */
 const ALWAYS_WALK_MIN = 15
+/** Only stops within this many minutes' walk count as a way onto the bus. */
+const MAX_WALK_TO_STOP_MIN = 10
 
 export type Commute =
   | { mode: 'walk'; minutes: number }
@@ -18,8 +18,9 @@ export type Commute =
       walkToStopMinutes: number
       stop: Stop
       route: Route
-      busMinutes: number
+      rideMinutes: number
     }
+  | { mode: 'transfer' }
 
 /** Great-circle distance in metres. */
 export function distanceMeters(a: LatLng, b: LatLng): number {
@@ -49,31 +50,14 @@ export function nearestStop(
   return best
 }
 
-function nearestVertex(path: LatLng[], p: LatLng): number {
-  let best = 0
-  let bestD = Infinity
-  path.forEach((v, i) => {
-    const d = distanceMeters(v, p)
-    if (d < bestD) {
-      bestD = d
-      best = i
-    }
-  })
-  return best
-}
+/** Stops that can reach the University Centre, found once (the default network never changes). */
+const hasRide = (s: Stop) => !s.campus && Object.keys(s.toCampus).length > 0
+const DEFAULT_CANDIDATES = STOPS.filter(hasRide)
 
-/** Distance travelled along a route line between the vertices nearest a and b. */
-export function alongRouteMeters(path: LatLng[], a: LatLng, b: LatLng): number {
-  const i = nearestVertex(path, a)
-  const j = nearestVertex(path, b)
-  let total = 0
-  for (let k = Math.min(i, j); k < Math.max(i, j); k++) {
-    total += distanceMeters(path[k], path[k + 1])
-  }
-  return total
-}
-
-/** Estimated door-to-campus commute: walk, or walk to a stop and ride. */
+/**
+ * Estimated door-to-campus commute: walk, or walk to a stop within 10 minutes
+ * and ride its scheduled time. "transfer" means no direct bus is close enough.
+ */
 export function campusCommute(
   p: LatLng,
   stops: Stop[] = STOPS,
@@ -81,33 +65,52 @@ export function campusCommute(
   campus: LatLng = CAMPUS,
 ): Commute {
   const walk = walkMinutes(distanceMeters(p, campus))
+  const candidates = stops === STOPS ? DEFAULT_CANDIDATES : stops.filter(hasRide)
+  const order = new Map(routes.map((r, i) => [r.id, i]))
+  const byId = new Map(routes.map((r) => [r.id, r]))
   let best: Extract<Commute, { mode: 'bus' }> | null = null
-  for (const route of routes) {
-    const onRoute = stops.filter((s) => s.routes.includes(route.id))
-    if (onRoute.length === 0) continue
-    const { stop, meters } = nearestStop(p, onRoute)
-    const walkToStopMinutes = walkMinutes(meters)
-    const busMinutes = Math.ceil(
-      alongRouteMeters(route.path, stop, campus) / BUS_M_PER_MIN,
-    )
-    const minutes = walkToStopMinutes + busMinutes
-    if (!best || minutes < best.minutes) {
-      best = { mode: 'bus', minutes, walkToStopMinutes, stop, route, busMinutes }
+  for (const stop of candidates) {
+    const walkToStopMinutes = walkMinutes(distanceMeters(p, stop))
+    if (walkToStopMinutes > MAX_WALK_TO_STOP_MIN) continue
+    for (const [routeId, rideMinutes] of Object.entries(stop.toCampus)) {
+      const route = byId.get(routeId)
+      if (!route) continue
+      const minutes = walkToStopMinutes + rideMinutes
+      const better =
+        !best ||
+        minutes < best.minutes ||
+        (minutes === best.minutes &&
+          (walkToStopMinutes < best.walkToStopMinutes ||
+            (walkToStopMinutes === best.walkToStopMinutes &&
+              compareRoutes(route, best.route, order) < 0)))
+      if (better) best = { mode: 'bus', minutes, walkToStopMinutes, stop, route, rideMinutes }
     }
   }
-  if (!best || walk <= ALWAYS_WALK_MIN || walk <= best.minutes) {
+  if (walk <= ALWAYS_WALK_MIN || (best && walk <= best.minutes)) {
     return { mode: 'walk', minutes: walk }
   }
-  return best
+  return best ?? { mode: 'transfer' }
+}
+
+function compareRoutes(a: Route, b: Route, order: Map<string, number>): number {
+  return a.shortName.localeCompare(b.shortName, undefined, { numeric: true }) ||
+    (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0)
+}
+
+/** Door-to-campus minutes, or null when a transfer is needed. */
+export function commuteMinutes(c: Commute): number | null {
+  return c.mode === 'transfer' ? null : c.minutes
 }
 
 /** "≈4 min walk to stop · Route 99 · ≈12 min to campus" */
 export function describeCommute(c: Commute): string {
   if (c.mode === 'walk') return `≈${c.minutes} min walk to campus`
-  return `≈${c.walkToStopMinutes} min walk to stop · ${c.route.name.replace(/^(Route \d+).*/, '$1')} · ≈${c.minutes} min to campus`
+  if (c.mode === 'transfer') return 'Transfer needed'
+  return `≈${c.walkToStopMinutes} min walk to stop · Route ${c.route.shortName} · ≈${c.minutes} min to campus`
 }
 
-/** Short form for cards: "≈9 min walk" / "≈18 min by bus" */
+/** Short form for cards: "≈9 min walk" / "≈18 min by bus" / "Transfer needed" */
 export function shortCommute(c: Commute): string {
+  if (c.mode === 'transfer') return 'Transfer needed'
   return c.mode === 'walk' ? `≈${c.minutes} min walk` : `≈${c.minutes} min by bus`
 }

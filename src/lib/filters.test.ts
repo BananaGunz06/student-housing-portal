@@ -6,7 +6,10 @@ const cheap = makeListing({ id: 'a', rent: 700 })
 const mid = makeListing({ id: 'b', rent: 900, type: 'studio', bedrooms: 0, furnished: true })
 const pricey = makeListing({ id: 'c', rent: 950, type: 'apartment', bedrooms: 2, availableFrom: '2027-09' })
 const big = makeListing({ id: 'd', rent: 2500, type: 'house', bedrooms: 4 })
-const far = makeListing({ id: 'e', rent: 650, lat: 43.4961, lng: -80.2121 })
+// Exhibition Park: a long Route 99 ride, so a longer commute than the walkers.
+const far = makeListing({ id: 'e', rent: 650, lat: 43.55124, lng: -80.26554 })
+// Outside the city, nowhere near a campus-bound stop.
+const stranded = makeListing({ id: 'f', rent: 600, lat: 43.45, lng: -80.4 })
 const all = [pricey, big, cheap, mid, far]
 
 const ids = (budget: number, f = DEFAULT_FILTERS) =>
@@ -26,6 +29,28 @@ describe('applyFilters', () => {
     expect(r.cost.total).toBe(700)
     expect(r.fit).toBe('stretch')
     expect(r.commute.mode).toBe('walk')
+  })
+
+  test('far places take the bus; stranded ones need a transfer', () => {
+    expect(evaluate([far], 5000)[0].commute.mode).toBe('bus')
+    expect(evaluate([stranded], 5000)[0].commute.mode).toBe('transfer')
+  })
+
+  test('transfer places show with no commute limit', () => {
+    expect(applyFilters(evaluate([stranded, cheap], 5000), DEFAULT_FILTERS).map((r) => r.listing.id)).toEqual(['f', 'a'])
+  })
+
+  test('any commute limit excludes transfer places, even a generous one', () => {
+    for (const maxCommute of [10, 15, 20, 30, 45]) {
+      const got = applyFilters(evaluate([stranded, cheap], 5000), { ...DEFAULT_FILTERS, maxCommute })
+      expect(got.map((r) => r.listing.id)).toEqual(['a'])
+    }
+  })
+
+  test('a bus commute within the limit stays, beyond it goes', () => {
+    const minutes = (evaluate([far], 5000)[0].commute as { minutes: number }).minutes
+    expect(applyFilters(evaluate([far], 5000), { ...DEFAULT_FILTERS, maxCommute: minutes })).toHaveLength(1)
+    expect(applyFilters(evaluate([far], 5000), { ...DEFAULT_FILTERS, maxCommute: minutes - 1 })).toHaveLength(0)
   })
 
   test('bedrooms 3 means 3 or more', () => {

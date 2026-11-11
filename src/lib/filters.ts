@@ -1,5 +1,5 @@
 import { HOUSING_TYPE_LABELS, type HousingType, type Listing } from '../data/types'
-import { campusCommute, type Commute } from './commute'
+import { campusCommute, commuteMinutes, type Commute } from './commute'
 import { fitStatus, trueMonthlyCost, type CostBreakdown, type FitStatus } from './cost'
 import { formatMonth } from './format'
 
@@ -60,7 +60,11 @@ function matchesNonBudget(r: ListingResult, f: Filters): boolean {
   }
   if (f.types.length > 0 && !f.types.includes(l.type)) return false
   if (f.furnishedOnly && !l.furnished) return false
-  if (f.maxCommute !== null && r.commute.minutes > f.maxCommute) return false
+  if (f.maxCommute !== null) {
+    // A transfer has no time we can promise, so any limit rules it out.
+    const minutes = commuteMinutes(r.commute)
+    if (minutes === null || minutes > f.maxCommute) return false
+  }
   if (f.moveIn && l.availableFrom > f.moveIn) return false
   return true
 }

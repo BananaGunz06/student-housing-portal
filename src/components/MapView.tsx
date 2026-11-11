@@ -14,7 +14,7 @@ import { pricePinHtml } from './pricePin'
 import SaveButton from './SaveButton'
 import TransitLayer from './TransitLayer'
 
-/** Every matching listing as a price pin, plus sample bus routes and campus. */
+/** Every matching listing as a price pin, plus bus routes and campus. */
 export default function MapView({
   results,
   onShowList,
@@ -70,7 +70,7 @@ export default function MapView({
       </MapContainer>
 
       <p className="pointer-events-none absolute top-3 right-3 left-14 z-[1000] w-fit rounded-full bg-card/95 px-3 py-1 text-sm">
-        {results.length} places, all-in prices. Coloured lines are sample bus routes.
+        {results.length} places, all-in prices. Coloured lines are bus routes.
       </p>
 
       {tilesFailed && (
@@ -102,7 +102,7 @@ export default function MapView({
                 <span className="font-sans text-sm font-normal text-ink-soft"> a month, all-in</span>
               </p>
               <p className="text-sm text-ink-soft">
-                {HOUSING_TYPE_LABELS[selected.listing.type]}, {shortCommute(selected.commute)} to campus
+                {HOUSING_TYPE_LABELS[selected.listing.type]}, {shortCommute(selected.commute)}{selected.commute.mode === 'transfer' ? '' : ' to campus'}
               </p>
             </div>
             <FitBadge fit={selected.fit} />
