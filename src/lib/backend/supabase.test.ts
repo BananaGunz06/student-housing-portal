@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cloudStateToRow, mapAuthError, rowToCloudState } from './supabase'
+import { cloudStateToRow, dataError, mapAuthError, rowToCloudState } from './supabase'
 
 describe('mapAuthError', () => {
   it('maps invalid credentials', () => {
@@ -17,6 +17,7 @@ describe('mapAuthError', () => {
   it('maps network failures', () => {
     expect(mapAuthError(new TypeError('Failed to fetch'))).toBe('network')
     expect(mapAuthError({ message: 'fetch failed' })).toBe('network')
+    expect(mapAuthError(new TypeError('Load failed'))).toBe('network')
     expect(mapAuthError({ name: 'AuthRetryableFetchError', message: 'x' })).toBe('network')
   })
   it('falls back to unknown', () => {
@@ -41,5 +42,14 @@ describe('row mapping', () => {
     const row = cloudStateToRow('u1', { budget: 900, filters: null, savedIds: ['a'], messages: [] })
     expect(row).toMatchObject({ user_id: 'u1', budget: 900, filters: null, saved_ids: ['a'], messages: [] })
     expect(typeof row.updated_at).toBe('string')
+  })
+})
+
+describe('dataError', () => {
+  it('reports Safari network failures as network', () => {
+    expect(dataError({ message: 'TypeError: Load failed', code: '' }).message).toBe('network')
+  })
+  it('keeps other messages', () => {
+    expect(dataError({ message: 'permission denied' }).message).toBe('permission denied')
   })
 })

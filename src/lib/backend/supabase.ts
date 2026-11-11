@@ -14,7 +14,7 @@ export function mapAuthError(err: unknown): AuthError {
   const msg = typeof e.message === 'string' ? e.message : ''
   const code = typeof e.code === 'string' ? e.code : ''
   const name = typeof e.name === 'string' ? e.name : ''
-  if (name === 'AuthRetryableFetchError' || /failed to fetch|fetch failed|networkerror/i.test(msg)) return 'network'
+  if (name === 'AuthRetryableFetchError' || /failed to fetch|fetch failed|networkerror|load failed/i.test(msg)) return 'network'
   if (code === 'invalid_credentials' || /invalid login credentials/i.test(msg)) return 'invalid-credentials'
   if (code === 'user_already_exists' || /already registered/i.test(msg)) return 'email-taken'
   if (code === 'weak_password' || /password should be/i.test(msg)) return 'weak-password'
@@ -47,7 +47,7 @@ export function cloudStateToRow(userId: string, s: CloudState) {
 const toSession = (s: SbSession | null): Session | null => (s ? { userId: s.user.id, email: s.user.email ?? '' } : null)
 
 /** Failures of data calls: 'network' for connectivity problems, otherwise the server's message. */
-function dataError(err: unknown): Error {
+export function dataError(err: unknown): Error {
   if (mapAuthError(err) === 'network') return new Error('network')
   const msg = err && typeof err === 'object' && 'message' in err ? String((err as ErrLike).message) : ''
   return new Error(msg || 'unknown')
