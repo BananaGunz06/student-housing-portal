@@ -1,0 +1,8 @@
+{
+  "schedule": "Winter 2026",
+  "serviceStart": "2026-01-04",
+  "serviceEnd": "2026-05-02",
+  "source": "https://mobilitydatabase.org/feeds/gtfs/mdb-3140",
+  "generated": "2026-11-11",
+  "note": "Weekday services from calendar.txt only (calendar_dates.txt ignored). Ride times: median scheduled minutes to the University Centre for arrivals 07:00-10:00."
+}
