@@ -9,6 +9,7 @@ import {
   scheduleLabel,
   serviceDates,
   simplifyLine,
+  TRANSFER_MINUTES,
 } from './gtfs.mjs'
 
 // A tiny hand-written feed. Route 99 (colour FF0000) runs weekdays; BREW is excluded;
@@ -313,5 +314,104 @@ Q2, 9:20:00, 9:20:00,U1,2
     const { routes, representativeDate } = buildNetwork(heavy)
     expect(representativeDate).toBe('2026-01-06')
     expect(routes.features.map((f) => f.properties.shortName)).toEqual(['56 U'])
+  })
+})
+
+describe('one-transfer trips (viaTransfer)', () => {
+  // ra never reaches campus. rb (from H1) and rc (from H2) go straight to University Centre.
+  // S rides ra to H1 (10 and 12 min) or H2 (20 and 30 min).
+  const tf = {
+    calendar: `service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date
+1,1,0,0,0,0,0,0,20260105,20260105
+`,
+    routes: `route_id,route_short_name,route_long_name,route_color
+ra,A,Feeder,111111
+rb,B,To campus from H1,222222
+rc,C,To campus from H2,333333
+rd,D,Direct from D,444444
+`,
+    trips: `route_id,service_id,trip_id,shape_id
+ra,1,a1,
+ra,1,a2,
+ra,1,a3,
+ra,1,a4,
+ra,1,a5,
+rb,1,b1,
+rb,1,b2,
+rb,1,bq,
+rc,1,c1,
+rd,1,d1,
+`,
+    stop_times: `trip_id,arrival_time,departure_time,stop_id,stop_sequence
+a1, 7:00:00, 7:00:00,S,1
+a1, 7:10:00, 7:10:00,H1,2
+a1, 7:20:00, 7:20:00,H2,3
+a2, 8:00:00, 8:00:00,S,1
+a2, 8:12:00, 8:12:00,H1,2
+a2, 8:30:00, 8:30:00,H2,3
+a3, 6:20:00, 6:20:00,V,1
+a3, 6:30:00, 6:30:00,H1,2
+a4, 9:45:00, 9:45:00,W,1
+a4, 9:55:00, 9:55:00,H1,2
+a5, 7:00:00, 7:00:00,D,1
+a5, 7:05:00, 7:05:00,H1,2
+b1, 7:30:00, 7:30:00,H1,1
+b1, 7:45:00, 7:45:00,U1,2
+b2, 8:30:00, 8:30:00,H1,1
+b2, 8:46:00, 8:46:00,U1,2
+bq, 6:50:00, 6:50:00,Q,1
+bq, 7:00:00, 7:00:00,H1,2
+bq, 7:10:00, 7:10:00,Z,3
+c1, 7:50:00, 7:50:00,H2,1
+c1, 8:00:00, 8:00:00,U1,2
+d1, 7:00:00, 7:00:00,D,1
+d1, 7:08:00, 7:08:00,U1,2
+`,
+    stops: `stop_id,stop_name,stop_lat,stop_lon
+S,Suburb S,43.50,-80.20
+V,Early V,43.51,-80.20
+W,Late W,43.52,-80.20
+D,Direct D,43.53,-80.20
+Q,Same Route Q,43.54,-80.20
+Z,End Z,43.55,-80.20
+H1,Hub One,43.56,-80.20
+H2,Hub Two,43.57,-80.20
+U1,University Centre 1,43.58,-80.20
+`,
+    shapes: 'shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\n',
+  }
+  const { stops } = buildNetwork(tf)
+  const stop = (id: string) => stops.features.find((f) => f.properties.id === id)?.properties
+
+  it('gives a stop with no direct bus the best ride + change + ride (min over hubs)', () => {
+    expect(stop('S')?.toCampus).toEqual({})
+    // via H1: median(10, 12) = 11, + 5, + 16 (median of 15 and 16 min, rounded up) = 32.
+    // via H2: median(20, 30) = 25, + 5, + 10 = 40. The minimum wins.
+    expect(TRANSFER_MINUTES).toBe(5)
+    expect(stop('S')?.viaTransfer).toEqual({
+      minutes: 32,
+      firstRoute: 'ra',
+      secondRoute: 'rb',
+      transferStop: { id: 'H1', name: 'Hub One' },
+    })
+  })
+
+  it('omits viaTransfer when a direct ride is at least as good', () => {
+    expect(stop('D')?.toCampus).toEqual({ rd: 8 })
+    expect(stop('D')?.viaTransfer).toBeUndefined()
+    expect(stop('H1')?.viaTransfer).toBeUndefined()
+  })
+
+  it('does not count changing to the same route', () => {
+    expect(stop('Q')?.viaTransfer).toBeUndefined()
+  })
+
+  it('only uses departures between 06:30 and 09:30', () => {
+    expect(stop('V')?.viaTransfer).toBeUndefined()
+    expect(stop('W')?.viaTransfer).toBeUndefined()
+  })
+
+  it('never adds viaTransfer to campus stops', () => {
+    expect(stop('U1')?.viaTransfer).toBeUndefined()
   })
 })

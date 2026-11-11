@@ -27,6 +27,11 @@ export const CAMPUS_PREFIX = 'University Centre'
 export const TOLERANCE_M = 10
 export const WINDOW_START = 7 * 3600
 export const WINDOW_END = 10 * 3600
+/** Minutes allowed for changing buses on a one-transfer trip. */
+export const TRANSFER_MINUTES = 5
+/** Departures from the first stop of a transfer trip, seconds after midnight. */
+export const TRANSFER_DEPART_START = 6.5 * 3600
+export const TRANSFER_DEPART_END = 9.5 * 3600
 
 /**
  * Parse CSV text (RFC 4180 quotes, optional BOM) into rows keyed by header.
@@ -235,10 +240,17 @@ const round5 = (n) => Math.round(n * 1e5) / 1e5
  * @param {number[]} values
  */
 export function medianMinutes(values) {
+  return Math.max(1, Math.ceil(rawMedian(values) - 1e-9))
+}
+
+/**
+ * Median without rounding (NaN when there are no finite values).
+ * @param {number[]} values
+ */
+function rawMedian(values) {
   const v = values.filter(Number.isFinite).sort((a, b) => a - b)
   const mid = v.length >> 1
-  const med = v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2
-  return Math.max(1, Math.ceil(med - 1e-9))
+  return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2
 }
 
 /**
@@ -357,21 +369,78 @@ export function buildNetwork(files, options = {}) {
     }
   }
 
+  // Direct ride times per stop: stop id to { routeId: minutes }.
+  /** @type {Map<string, Record<string, number>>} */
+  const direct = new Map()
+  for (const [id, routeSet] of stopRoutes) {
+    /** @type {Record<string, number>} */
+    const toCampus = {}
+    for (const rid of [...routeSet].sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))) {
+      const v = rides.get(`${id}|${rid}`)?.filter(Number.isFinite)
+      if (v?.length) toCampus[rid] = medianMinutes(v)
+    }
+    direct.set(id, toCampus)
+  }
+
+  // One-transfer trips: ride route R1 from S to a later stop B (before the trip reaches campus),
+  // change (TRANSFER_MINUTES), then ride a different route R2 that goes directly to campus from B.
+  /** @type {Map<string, number[]>} key `S|R1|B|R2` */
+  const legs = new Map()
+  for (const [tripId, list] of timesByTrip) {
+    const r1 = tripRoute.get(tripId)
+    for (let i = 0; i < list.length; i++) {
+      const from = list[i]
+      if (isCampus(from.stop_id)) continue
+      const depart = firstFinite(from.departure_time, from.arrival_time)
+      if (!Number.isFinite(depart) || depart < TRANSFER_DEPART_START || depart > TRANSFER_DEPART_END) continue
+      for (let j = i + 1; j < list.length; j++) {
+        const to = list[j]
+        if (isCampus(to.stop_id)) break
+        if (to.stop_id === from.stop_id) continue
+        const arrive = firstFinite(to.arrival_time, to.departure_time)
+        if (!Number.isFinite(arrive)) continue
+        for (const r2 of Object.keys(direct.get(to.stop_id) ?? {})) {
+          if (r2 === r1) continue
+          const key = `${from.stop_id}|${r1}|${to.stop_id}|${r2}`
+          if (!legs.has(key)) legs.set(key, [])
+          legs.get(key)?.push((arrive - depart) / 60)
+        }
+      }
+    }
+  }
+  /** @type {Map<string, { total: number, firstRoute: string, secondRoute: string, via: string }>} */
+  const bestTransfer = new Map()
+  for (const key of [...legs.keys()].sort()) {
+    const [sid, r1, bid, r2] = key.split('|')
+    const total = rawMedian(/** @type {number[]} */ (legs.get(key))) + TRANSFER_MINUTES + direct.get(bid)[r2]
+    const cur = bestTransfer.get(sid)
+    if (!cur || total < cur.total) bestTransfer.set(sid, { total, firstRoute: r1, secondRoute: r2, via: bid })
+  }
+
   const stopFeatures = [...stopRoutes.keys()]
     .filter((id) => stopRows.has(id))
     .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))
     .map((id) => {
       const s = stopRows.get(id)
       const routeIds = [...(stopRoutes.get(id) ?? [])].sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))
-      /** @type {Record<string, number>} */
-      const toCampus = {}
-      for (const rid of routeIds) {
-        const v = rides.get(`${id}|${rid}`)?.filter(Number.isFinite)
-        if (v?.length) toCampus[rid] = medianMinutes(v)
-      }
+      const toCampus = direct.get(id) ?? {}
       /** @type {Record<string, unknown>} */
       const properties = { id, name: s?.stop_name, routes: routeIds, toCampus }
       if (isCampus(id)) properties.campus = true
+      const t = bestTransfer.get(id)
+      if (t && !isCampus(id)) {
+        const minutes = Math.max(1, Math.ceil(t.total - 1e-9))
+        const best = Math.min(...Object.values(toCampus))
+        // Only worth storing when no direct ride is at least as good.
+        if (!(best <= minutes)) {
+          properties.viaTransfer = {
+            minutes,
+            firstRoute: t.firstRoute,
+            secondRoute: t.secondRoute,
+            transferStop: { id: t.via, name: stopRows.get(t.via)?.stop_name },
+          }
+        }
+      }
       return {
         type: 'Feature',
         properties,
