@@ -2,7 +2,7 @@
 
 A budget-first housing search for University of Guelph students. You say what you can spend each month, all-in, and it shows only places that fit. Each price is the **true monthly cost** (rent plus utilities, internet and getting to campus), not just the advertised rent.
 
-Version 1 is a portfolio piece and an idea test. It runs entirely in the browser, with no backend and no sign-up.
+Version 1 is a portfolio piece and an idea test. Browsing needs no account. Signing in is optional and keeps your details on any device (see Accounts below).
 
 **Live demo:** https://bananagunz06.github.io/student-housing-portal/
 
@@ -37,6 +37,19 @@ npm run lint     # oxlint
 npm run build    # type-check and production build
 ```
 
+## Accounts
+
+Signing in is optional. You can search, save places and send messages without an account, and your data stays in this browser.
+
+- **What syncs.** Once you create an account or sign in, your budget, filters, saved places and messages sync to it, so they show up on any device. Your name and optional phone number are kept on your profile, which fills in the message form. The **Account** tab shows your email, lets you edit your details, log out, or delete your account (which removes your saved places, messages and sign-in).
+- **Browsing never needs sign-in.** Only saving places and messaging a poster ask you to sign in, and you can dismiss that prompt.
+- **Setup (Supabase).** The app uses [Supabase](https://supabase.com) for sign-in and storage. To run it against your own project:
+  1. Create a Supabase project.
+  2. Open the SQL Editor and run `supabase/migrations/0001_accounts.sql`. It creates the tables and the row-level security rules that keep each account's data private.
+  3. For the demo, turn off **Confirm email** under Authentication → Providers → Email. Otherwise new accounts must confirm by email before they can sign in.
+  4. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` for the app. Only the publishable (anon) key belongs in the repo or the browser. Never add the secret or service_role key.
+- **Data note.** Account data is demo data, like the rest of the sample app. Listings and posters are still fictional.
+
 ## Deploy
 
 `.github/workflows/deploy.yml` lints, tests and builds every pull request. On each push to `main` it also publishes the site to GitHub Pages. It builds with `BASE_PATH=/student-housing-portal/` so the app works under the repo's sub-path, and it copies `index.html` to `404.html` so refreshing a page like `/listing/gue-001` still loads the app.
@@ -50,7 +63,7 @@ Everything here is **sample data for a demo**:
 - **Listings** are 40 fictional places, priced to look like the Guelph student market. `scripts/generate-listings.mjs` generates them from a fixed seed into `src/data/listings.json`.
 - **Bus routes and stops are hand-made and approximate.** The plan was to convert Guelph Transit's public GTFS feed, but the city's data hosts weren't reachable from the build environment. So `scripts/build-sample-transit.mjs` draws 4 sample routes and 26 stops through the campus loop instead. They are **not** the real Guelph Transit network or schedule. To use the real network, convert the GTFS `stops.txt` and `shapes.txt` into the same two GeoJSON files in `src/data/transit/`.
 - **Posters are fictional.** Names are made up, phone numbers use the reserved 555-01xx range and emails use `example.com`. About a third of posters share no phone or email, so messaging in the app is their only contact.
-- **Messaging is a demo.** Messages are saved in your browser only and aren't sent to anyone, and posters can't reply yet. The app says so on the message form and the Messages tab. Making it real needs a server that stores and delivers messages and gives posters an inbox; `AppState.sendMessage` and `listingsRepo` are where that would plug in.
+- **Messaging is a demo.** Messages are saved in your browser (or in your account, once you sign in) and aren't sent to anyone, and posters can't reply yet. The app says so on the message form and the Messages tab. Making it real needs a server that stores and delivers messages and gives posters an inbox; `AppState.sendMessage` and `listingsRepo` are where that would plug in.
 - **Photos are generated illustrations**, not real photos (`src/components/ListingArt.tsx`).
 - **Bus pass is $0 a month.** U of G undergraduates pay the Universal Bus Pass (UPass) through their student fees. Change `transitMonthly` in `src/data/campus.ts` for other campuses.
 - **Commute times are estimates**, marked "≈":
@@ -80,11 +93,11 @@ src/
   components/    BudgetInput, ListingCard, FitBadge, BudgetMeter, CostBreakdown, FilterSheet,
                  MapView, pricePin, TransitLayer, MiniMap, CompareTable, BottomNav, ListingArt,
                  PosterCard, MessageSheet
-  pages/         Welcome, Results, ListingDetail, Saved, Compare, Messages, Conversation, NotFound
+  pages/         Welcome, Results, ListingDetail, Saved, Compare, Messages, Conversation, Account, NotFound
 ```
 
 The maths in `src/lib` is plain TypeScript with no React, unit-tested directly, and shared by the list, map, detail and compare screens. The map code loads only when you open a map, so the list stays light.
 
 ## Not in version 1
 
-Accounts, landlord posting, real message delivery and poster replies, roommate matching, rent splitting, scam warnings and real listings. The design spec is in `docs/superpowers/specs/` and the build plan is in `docs/superpowers/plans/`.
+Landlord posting, real message delivery and poster replies, roommate matching, rent splitting, scam warnings and real listings. The design spec is in `docs/superpowers/specs/` and the build plan is in `docs/superpowers/plans/`.

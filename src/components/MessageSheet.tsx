@@ -10,6 +10,7 @@ import {
   type DraftErrors,
 } from '../lib/messages'
 import { useModal } from '../lib/useModal'
+import { useAccount } from '../state/AccountState'
 import { useAppState } from '../state/AppState'
 
 const fieldClass = 'min-h-11 w-full rounded-xl border-2 border-line bg-card px-3 py-2 aria-[invalid=true]:border-over'
@@ -58,11 +59,13 @@ export default function MessageSheet({
   onSent: () => void
 }) {
   const { sendMessage, lastShared } = useAppState()
+  // Signed in, the saved profile fills in name and phone when this message has no details of its own yet.
+  const { profile } = useAccount()
   const first = greetingName(listing.poster)
   const [d, setD] = useState<Draft>(() => ({
     ...EMPTY_DRAFT,
-    name: lastShared.name ?? '',
-    phone: lastShared.phone ?? '',
+    name: lastShared.name ?? profile?.displayName ?? '',
+    phone: lastShared.phone ?? profile?.phone ?? '',
     email: lastShared.email ?? '',
     other: lastShared.other ?? '',
     body: starterMessage(listing),

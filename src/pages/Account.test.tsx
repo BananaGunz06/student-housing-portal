@@ -1,11 +1,15 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { useEffect } from 'react'
 import { describe, expect, test, vi } from 'vitest'
 import type { AuthResult, Backend } from '../lib/backend/types'
 import { getAll } from '../lib/listingsRepo'
 import { greetingName } from '../lib/messages'
 import { createFakeBackend } from '../test/fakeBackend'
-import { renderApp, setBudget } from '../test/renderApp'
+import { renderApp, setBudget, sessionReady } from '../test/renderApp'
 import { AppStateProvider, useAppState } from '../state/AppState'
+import { AccountProvider, useAccount, type SyncStatus } from '../state/AccountState'
+import { AppRoutes } from '../App'
+import { MemoryRouter } from 'react-router-dom'
 
 vi.mock('../components/MiniMap', () => ({ default: () => <div>mini map</div> }))
 
@@ -233,3 +237,141 @@ describe('Save replay', () => {
     expect(JSON.parse(localStorage.getItem('shp.saved')!)).toEqual([listing.id])
   })
 })
+
+const SIGNED_OUT_LINE = 'Sign in to keep your saved places and messages on any device.'
+const DELETE_QUESTION = 'Delete your account? This removes your saved places, messages and sign-in. It can’t be undone.'
+const student = { email: 'student@example.com', password: 'password123', name: 'Test Student' }
+
+describe('Account page', () => {
+  test('signed out: shows the sign-in forms', async () => {
+    renderApp('/account')
+    expect(screen.getByRole('heading', { level: 1, name: 'Account' })).toBeInTheDocument()
+    await sessionReady()
+    expect(screen.getByText(SIGNED_OUT_LINE)).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Sign in' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Create account' })).toBeInTheDocument()
+  })
+
+  test('signed in: shows the email, and saving the profile shows Saved and updates the backend', async () => {
+    const { user, backend } = renderApp('/account', { signedInAs: student.email })
+    await sessionReady()
+    expect(screen.getByText(student.email)).toBeInTheDocument()
+    const name = screen.getByLabelText('Name')
+    await waitFor(() => expect(name).toHaveValue(student.name))
+    await user.clear(screen.getByLabelText('Phone (optional)'))
+    await user.type(screen.getByLabelText('Phone (optional)'), '555-0100')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByText('Saved', { selector: 'p' })).toBeInTheDocument()
+    expect(await backend.loadProfile()).toEqual({ displayName: student.name, phone: '555-0100' })
+  })
+
+  test('a failed save says so and keeps the typed details', async () => {
+    const base = createFakeBackend({ users: [student], sessionEmail: student.email })
+    const backend: Backend = { ...base, saveProfile: async () => Promise.reject(new Error('network')) }
+    const { user } = renderApp('/account', { backend })
+    await sessionReady()
+    await waitFor(() => expect(screen.getByLabelText('Name')).toHaveValue(student.name))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByText('Couldn’t save. Check your connection and try again.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Name')).toHaveValue(student.name)
+  })
+
+  test('a blank name is refused before any save', async () => {
+    const base = createFakeBackend({ users: [student], sessionEmail: student.email })
+    const saveProfile = vi.fn(base.saveProfile)
+    const { user } = renderApp('/account', { backend: { ...base, saveProfile } })
+    await sessionReady()
+    await waitFor(() => expect(screen.getByLabelText('Name')).toHaveValue(student.name))
+    await user.clear(screen.getByLabelText('Name'))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(screen.getByText('Enter your name.')).toBeInTheDocument()
+    expect(saveProfile).not.toHaveBeenCalled()
+  })
+
+  test.each<[SyncStatus, string]>([
+    ['saved', 'Saved to your account'],
+    ['saving', 'Saving…'],
+    ['error', 'Not synced yet. We’ll try again.'],
+  ])('sync status %s shows its line', async (status, text) => {
+    renderAccountWithSync(status)
+    expect(await screen.findByText(text)).toBeInTheDocument()
+  })
+
+  test('Log out returns to the signed-out view', async () => {
+    const { user } = renderApp('/account', { signedInAs: student.email })
+    await sessionReady()
+    await user.click(screen.getByRole('button', { name: 'Log out' }))
+    expect(await screen.findByText(SIGNED_OUT_LINE)).toBeInTheDocument()
+  })
+
+  test('Delete account asks first, then removes the user and signs out', async () => {
+    const { user, backend } = renderApp('/account', { signedInAs: student.email })
+    await sessionReady()
+    await user.click(screen.getByRole('button', { name: 'Delete account' }))
+    expect(screen.getByText(DELETE_QUESTION)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Delete my account' }))
+    expect(await screen.findByText(SIGNED_OUT_LINE)).toBeInTheDocument()
+    expect(await backend.signIn(student.email, student.password)).toEqual({ ok: false, error: 'invalid-credentials' })
+  })
+
+  test('Cancel hides the delete confirmation and keeps the account', async () => {
+    const { user, backend } = renderApp('/account', { signedInAs: student.email })
+    await sessionReady()
+    await user.click(screen.getByRole('button', { name: 'Delete account' }))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByText(DELETE_QUESTION)).toBeNull()
+    expect(screen.getByText(student.email)).toBeInTheDocument()
+    expect(await backend.loadProfile()).toEqual({ displayName: student.name, phone: null })
+  })
+
+  test('a failed delete shows the error and keeps the account', async () => {
+    const base = createFakeBackend({ users: [student], sessionEmail: student.email })
+    const backend: Backend = { ...base, deleteAccount: async () => Promise.reject(new Error('network')) }
+    const { user } = renderApp('/account', { backend })
+    await sessionReady()
+    await user.click(screen.getByRole('button', { name: 'Delete account' }))
+    await user.click(screen.getByRole('button', { name: 'Delete my account' }))
+    expect(await screen.findByText('Couldn’t delete your account. Check your connection and try again.')).toBeInTheDocument()
+    expect(screen.getByText(student.email)).toBeInTheDocument()
+  })
+
+  test('the bottom nav has an Account item that is active on /account', async () => {
+    renderApp('/account')
+    const link = screen.getByRole('link', { name: 'Account' })
+    expect(link).toHaveAttribute('aria-current', 'page')
+    expect(link).toHaveAttribute('href', '/account')
+  })
+
+  test('the message form prefills name and phone from the profile when nothing was shared before', async () => {
+    setBudget(1000)
+    const base = createFakeBackend({ users: [student], sessionEmail: student.email })
+    await base.saveProfile({ displayName: student.name, phone: '555-0100' })
+    const { user } = renderApp(`/listing/${listing.id}`, { backend: base })
+    await sessionReady()
+    await waitFor(() => expect(messageButton()).toBeEnabled())
+    await user.click(messageButton())
+    const dialog = screen.getByRole('dialog', { name: `Message ${greetingName(listing.poster)}` })
+    await waitFor(() => expect(within(dialog).getByLabelText('Your name')).toHaveValue(student.name))
+    expect(within(dialog).getByLabelText('Phone')).toHaveValue('555-0100')
+  })
+})
+
+/** Renders the Account page with a sync status set by a probe, without the real sync running. */
+function renderAccountWithSync(status: SyncStatus) {
+  const backend = createFakeBackend({ users: [student], sessionEmail: student.email })
+  function Probe() {
+    const { setSyncStatus } = useAccount()
+    useEffect(() => setSyncStatus(status), [setSyncStatus])
+    return null
+  }
+  return render(
+    <MemoryRouter initialEntries={['/account']}>
+      <AccountProvider backend={backend}>
+        <Probe />
+        <AppStateProvider>
+          <AppRoutes />
+        </AppStateProvider>
+      </AccountProvider>
+    </MemoryRouter>,
+  )
+}

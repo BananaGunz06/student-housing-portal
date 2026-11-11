@@ -60,6 +60,8 @@ describe('Messaging a poster', () => {
 
     await user.type(body, 'Is it still free in January?')
     await user.clear(within(dialog).getByLabelText('Phone'))
+    // Signed in, the name starts as the profile's name, so replace it.
+    await user.clear(within(dialog).getByLabelText('Your name'))
     await user.type(within(dialog).getByLabelText('Your name'), 'Alex')
     await user.type(within(dialog).getByLabelText('Anything else you want to share'), 'Second-year student, no pets')
     await user.click(within(dialog).getByRole('button', { name: 'Send message' }))

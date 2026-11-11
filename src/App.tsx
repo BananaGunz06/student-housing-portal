@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import BottomNav from './components/BottomNav'
+import Account from './pages/Account'
 import Compare from './pages/Compare'
 import Conversation from './pages/Conversation'
 import ListingDetail from './pages/ListingDetail'
@@ -47,6 +48,7 @@ export function AppRoutes() {
         <Route path="/compare" element={<Compare />} />
         <Route path="/messages" element={<Messages />} />
         <Route path="/messages/:listingId" element={<Conversation />} />
+        <Route path="/account" element={<Account />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
