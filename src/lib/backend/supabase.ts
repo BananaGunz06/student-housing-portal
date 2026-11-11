@@ -95,7 +95,7 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       }
     },
     async signOut() {
-      const { error } = await sb.auth.signOut()
+      const { error } = await sb.auth.signOut({ scope: 'local' })
       if (error) throw dataError(error)
     },
     async deleteAccount() {

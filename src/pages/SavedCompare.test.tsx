@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import { describe, expect, test } from 'vitest'
 import { getAll } from '../lib/listingsRepo'
-import { renderApp, setBudget } from '../test/renderApp'
+import { renderApp, sessionReady, setBudget } from '../test/renderApp'
 
 const ids = getAll().map((l) => l.id)
 const saveIds = (list: string[]) => localStorage.setItem('shp.saved', JSON.stringify(list))
@@ -9,7 +9,8 @@ const saveIds = (list: string[]) => localStorage.setItem('shp.saved', JSON.strin
 describe('Saved and Compare', () => {
   test('save two places, then compare them side by side', async () => {
     setBudget(5000)
-    const { user } = renderApp('/results')
+    const { user } = renderApp('/results', { signedInAs: 'student@example.com' })
+    await sessionReady()
     const [first, second] = screen.getAllByRole('article')
     const t1 = within(first).getByRole('heading', { level: 2 }).textContent!
     const t2 = within(second).getByRole('heading', { level: 2 }).textContent!

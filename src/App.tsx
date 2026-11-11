@@ -8,6 +8,8 @@ import NotFound from './pages/NotFound'
 import Results from './pages/Results'
 import Saved from './pages/Saved'
 import Welcome from './pages/Welcome'
+import { defaultBackend } from './lib/backend'
+import { AccountProvider } from './state/AccountState'
 import { AppStateProvider, useAppState } from './state/AppState'
 
 function Home() {
@@ -53,9 +55,11 @@ export function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <AppStateProvider>
-        <AppRoutes />
-      </AppStateProvider>
+      <AccountProvider backend={defaultBackend}>
+        <AppStateProvider>
+          <AppRoutes />
+        </AppStateProvider>
+      </AccountProvider>
     </BrowserRouter>
   )
 }

@@ -12,6 +12,7 @@ import { formatMoney } from '../lib/cost'
 import { evaluateOne } from '../lib/filters'
 import { bedroomsLabel, formatMonth } from '../lib/format'
 import { getById } from '../lib/listingsRepo'
+import { useAccount } from '../state/AccountState'
 import { useAppState } from '../state/AppState'
 import NotFound from './NotFound'
 
@@ -30,6 +31,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function ListingDetail() {
   const { id = '' } = useParams()
   const { budget } = useAppState()
+  const { requireAccount } = useAccount()
   const [messaging, setMessaging] = useState(false)
   const [sentNote, setSentNote] = useState(false)
   const listing = getById(id)
@@ -68,7 +70,7 @@ export default function ListingDetail() {
         </Section>
 
         <Section title="Posted by">
-          <PosterCard listing={l} onMessage={() => setMessaging(true)} />
+          <PosterCard listing={l} onMessage={() => requireAccount('message', () => setMessaging(true))} />
         </Section>
 
         <Section title="Getting to campus">
@@ -121,7 +123,7 @@ export default function ListingDetail() {
             <SaveButton id={l.id} title={l.title} />
             <button
               type="button"
-              onClick={() => setMessaging(true)}
+              onClick={() => requireAccount('message', () => setMessaging(true))}
               className="inline-flex min-h-11 items-center rounded-full bg-ink px-4 font-bold text-white"
             >
               Message

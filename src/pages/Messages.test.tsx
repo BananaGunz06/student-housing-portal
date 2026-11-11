@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
 import { getAll } from '../lib/listingsRepo'
 import { greetingName } from '../lib/messages'
-import { renderApp, setBudget } from '../test/renderApp'
+import { renderApp, sessionReady, setBudget } from '../test/renderApp'
 
 vi.mock('../components/MiniMap', () => ({ default: () => <div>mini map</div> }))
 
@@ -40,7 +40,7 @@ describe('Messaging a poster', () => {
     setBudget(1000)
     const l = privatePoster
     const first = greetingName(l.poster)
-    const { user } = renderApp(`/listing/${l.id}`)
+    const { user } = renderApp(`/listing/${l.id}`, { signedInAs: 'student@example.com' })
 
     await user.click(screen.getByRole('button', { name: `Message ${first}` }))
     const dialog = screen.getByRole('dialog', { name: `Message ${first}` })
@@ -107,7 +107,8 @@ describe('Messaging a poster', () => {
         { id: 'm1', listingId: sharesBoth.id, sentAt: '2026-11-10T10:00:00Z', body: 'Hi', shared: { name: 'Alex', phone: '519-555-0199' } },
       ]),
     )
-    const { user } = renderApp(`/listing/${privatePoster.id}`)
+    const { user } = renderApp(`/listing/${privatePoster.id}`, { signedInAs: 'student@example.com' })
+    await sessionReady()
     await user.click(screen.getAllByRole('button', { name: /^Message/ })[0])
     const dialog = screen.getByRole('dialog')
     expect(within(dialog).getByLabelText('Your name')).toHaveValue('Alex')
@@ -117,7 +118,8 @@ describe('Messaging a poster', () => {
 
   test('Escape closes the message sheet and returns focus', async () => {
     setBudget(1000)
-    const { user } = renderApp(`/listing/${privatePoster.id}`)
+    const { user } = renderApp(`/listing/${privatePoster.id}`, { signedInAs: 'student@example.com' })
+    await sessionReady()
     const opener = screen.getByRole('button', { name: `Message ${greetingName(privatePoster.poster)}` })
     await user.click(opener)
     await user.keyboard('{Escape}')
