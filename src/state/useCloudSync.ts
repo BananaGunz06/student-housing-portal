@@ -16,7 +16,7 @@ const json = (s: CloudState) => JSON.stringify(s)
  * online, and forget personal data on sign out.
  */
 export function useCloudSync(): void {
-  const { backend, session, status, setSyncStatus } = useAccount()
+  const { backend, session, status, restoreFailed, setSyncStatus } = useAccount()
   const { deviceState, replaceAll, clearPersonal } = useAppState()
   const userId = session?.userId ?? null
   const deviceJson = json(deviceState)
@@ -107,13 +107,12 @@ export function useCloudSync(): void {
         const foreign = owner !== null && owner !== uid
         const device = foreign ? { ...m.device, savedIds: [], messages: [] } : m.device
         const merged = mergeStates(device, account)
-        if (foreign) clearPersonal()
         // Record before replacing, so the change this causes is not saved again.
         m.lastSaved = json(account)
         m.loadedFor = uid
         m.failed = false
         safeStorage.set(OWNER_KEY, uid)
-        replaceAll(merged)
+        replaceAll(merged, foreign)
         m.device = merged
         m.loading = false
         await save(gen)
@@ -125,7 +124,7 @@ export function useCloudSync(): void {
         if (gen === m.generation) m.loading = false
       }
     },
-    [backend, clearPersonal, replaceAll, save, setSyncStatus],
+    [backend, replaceAll, save, setSyncStatus],
   )
 
   /** Do whatever is outstanding: the first load, or a save of the current data. */
@@ -153,16 +152,24 @@ export function useCloudSync(): void {
 
   // Started with no session, but this device still holds a former user's data.
   useEffect(() => {
-    if (status === 'signed-out' && safeStorage.get(OWNER_KEY) !== null) {
+    if (status === 'signed-out' && !restoreFailed && safeStorage.get(OWNER_KEY) !== null) {
       clearPersonal()
       safeStorage.remove(OWNER_KEY)
     }
-  }, [status, clearPersonal])
+  }, [status, restoreFailed, clearPersonal])
 
   // Changes after the account has loaded (or while a failed load waits for a retry).
   useEffect(() => {
     if (!userId || bag.current.loading) return
-    if (bag.current.loadedFor === userId && (deviceJson === bag.current.lastSaved || deviceJson === bag.current.inflight)) return
+    if (bag.current.loadedFor === userId) {
+      if (deviceJson === bag.current.inflight) return
+      if (deviceJson === bag.current.lastSaved) {
+        // Changed back before anything needed saving.
+        clearTimer()
+        if (bag.current.inflight === null) setSyncStatus('saved')
+        return
+      }
+    }
     if (bag.current.loadedFor !== userId && !bag.current.failed) return
     clearTimer()
     if (bag.current.loadedFor === userId) setSyncStatus('saving')

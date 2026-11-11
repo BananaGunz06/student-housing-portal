@@ -25,7 +25,7 @@ export interface AppState {
   /** Budget, filters, saved places and messages as the account would keep them. */
   deviceState: CloudState
   /** Take everything from a cloud state (keeping anything added a moment ago); a null budget or filters keeps this device's. */
-  replaceAll: (s: CloudState) => void
+  replaceAll: (s: CloudState, overwrite?: boolean) => void
   /** Forget saved places and messages (on sign out); keeps budget and filters. */
   clearPersonal: () => void
 }
@@ -91,7 +91,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     latest.current = deviceState
   })
   const replaceAll = useCallback(
-    (s: CloudState) => {
+    (s: CloudState, overwrite = false) => {
+      if (overwrite) {
+        // What is on the device is being discarded, so write exactly `s`.
+        if (s.budget !== null) setBudgetRaw(s.budget)
+        if (s.filters) setFilters(s.filters)
+        setSavedRaw(s.savedIds)
+        setMessages(s.messages)
+        return
+      }
       const cur = latest.current
       if (s.budget !== null && s.budget !== cur.budget) setBudgetRaw(s.budget)
       if (s.filters && JSON.stringify(s.filters) !== JSON.stringify(cur.filters)) setFilters(s.filters)

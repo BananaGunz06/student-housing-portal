@@ -19,6 +19,8 @@ export interface AccountApi {
   syncStatus: SyncStatus
   /** Used by the cloud sync to report progress. */
   setSyncStatus(s: SyncStatus): void
+  /** True when reading the saved session failed (for example offline), so "signed out" is only a guess. */
+  restoreFailed: boolean
   /** The backend this provider talks to (for the cloud sync). */
   backend: Backend
 }
@@ -33,6 +35,7 @@ const AccountContext = createContext<AccountApi | null>(null)
 export function AccountProvider({ backend, children }: { backend: Backend; children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loaded, setLoaded] = useState(false)
+  const [restoreFailed, setRestoreFailed] = useState(false)
   const [loadedProfile, setLoadedProfile] = useState<{ userId: string; profile: Profile } | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle')
@@ -47,9 +50,13 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
     })
     backend
       .getSession()
-      .catch(() => null)
-      .then((s) => {
+      .then(
+        (s) => ({ s, failed: false }),
+        () => ({ s: null, failed: true }),
+      )
+      .then(({ s, failed }) => {
         if (!live) return
+        setRestoreFailed(failed)
         // An auth change that landed first is newer than this read.
         setSession((cur) => cur ?? s)
         setLoaded(true)
@@ -114,9 +121,10 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
       requireAccount,
       syncStatus,
       setSyncStatus,
+      restoreFailed,
       backend,
     }),
-    [backend, loaded, signedIn, session, profile, userId, requireAccount, syncStatus],
+    [backend, loaded, signedIn, session, profile, userId, requireAccount, syncStatus, restoreFailed],
   )
 
   return (
