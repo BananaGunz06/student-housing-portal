@@ -25,7 +25,13 @@
       "Bike storage",
       "Furnished"
     ],
-    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site."
+    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site.",
+    "poster": {
+      "name": "Jordan N.",
+      "role": "landlord",
+      "replyTime": "Usually replies within a few hours",
+      "email": "jordan.n@example.com"
+    }
   },
   {
     "id": "gue-002",
@@ -52,7 +58,13 @@
       "Desk and chair",
       "Furnished"
     ],
-    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site."
+    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site.",
+    "poster": {
+      "name": "Omar L.",
+      "role": "landlord",
+      "replyTime": "Usually replies within 2 days",
+      "email": "omar.l@example.com"
+    }
   },
   {
     "id": "gue-003",
@@ -79,7 +91,12 @@
       "Parking spot",
       "Furnished"
     ],
-    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site."
+    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site.",
+    "poster": {
+      "name": "Aisha D.",
+      "role": "landlord",
+      "replyTime": "Usually replies within a few hours"
+    }
   },
   {
     "id": "gue-004",
@@ -107,7 +124,13 @@
       "Backyard",
       "Furnished"
     ],
-    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site."
+    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site.",
+    "poster": {
+      "name": "Leah W.",
+      "role": "student-sublet",
+      "replyTime": "Usually replies within 2 days",
+      "email": "leah.w@example.com"
+    }
   },
   {
     "id": "gue-005",
@@ -133,7 +156,13 @@
       "Parking spot",
       "Furnished"
     ],
-    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site."
+    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site.",
+    "poster": {
+      "name": "Grace N.",
+      "role": "landlord",
+      "replyTime": "Usually replies within 2 days",
+      "email": "grace.n@example.com"
+    }
   },
   {
     "id": "gue-006",
@@ -159,7 +188,13 @@
       "Bike storage",
       "Furnished"
     ],
-    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site."
+    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site.",
+    "poster": {
+      "name": "Ben H.",
+      "role": "landlord",
+      "replyTime": "Usually replies within a few hours",
+      "email": "ben.h@example.com"
+    }
   },
   {
     "id": "gue-007",
@@ -187,7 +222,13 @@
       "Cleaning rota",
       "Furnished"
     ],
-    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site."
+    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site.",
+    "poster": {
+      "name": "Sofia H.",
+      "role": "landlord",
+      "replyTime": "Usually replies within 2 days",
+      "email": "sofia.h@example.com"
+    }
   },
   {
     "id": "gue-008",
@@ -216,7 +257,13 @@
       "Parking spot",
       "Furnished"
     ],
-    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site."
+    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site.",
+    "poster": {
+      "name": "Omar A.",
+      "role": "landlord",
+      "replyTime": "Usually replies within 2 days",
+      "phone": "519-555-0100"
+    }
   },
   {
     "id": "gue-009",
@@ -243,7 +290,13 @@
       "Desk and chair",
       "Furnished"
     ],
-    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site."
+    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site.",
+    "poster": {
+      "name": "Ben D.",
+      "role": "landlord",
+      "replyTime": "Usually replies within a day",
+      "email": "ben.d@example.com"
+    }
   },
   {
     "id": "gue-010",
@@ -270,7 +323,12 @@
       "Laundry in house",
       "Furnished"
     ],
-    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site."
+    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site.",
+    "poster": {
+      "name": "Mei B.",
+      "role": "landlord",
+      "replyTime": "Usually replies within 2 days"
+    }
   },
   {
     "id": "gue-011",
@@ -297,7 +355,14 @@
       "Bike storage",
       "Furnished"
     ],
-    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site."
+    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site.",
+    "poster": {
+      "name": "Ines F.",
+      "role": "student-sublet",
+      "replyTime": "Usually replies within a few hours",
+      "phone": "519-555-0101",
+      "email": "ines.f@example.com"
+    }
   },
   {
     "id": "gue-012",
@@ -324,7 +389,12 @@
       "Cleaning rota",
       "Furnished"
     ],
-    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site."
+    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site.",
+    "poster": {
+      "name": "Priya W.",
+      "role": "student-sublet",
+      "replyTime": "Usually replies within 2 days"
+    }
   },
   {
     "id": "gue-013",
@@ -351,7 +421,12 @@
       "Cleaning rota",
       "Furnished"
     ],
-    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site."
+    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site.",
+    "poster": {
+      "name": "Jordan P.",
+      "role": "landlord",
+      "replyTime": "Usually replies within 2 days"
+    }
   },
   {
     "id": "gue-014",
@@ -377,7 +452,13 @@
       "Bike storage",
       "Furnished"
     ],
-    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site."
+    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site.",
+    "poster": {
+      "name": "Sam A.",
+      "role": "landlord",
+      "replyTime": "Usually replies within a day",
+      "phone": "519-555-0102"
+    }
   },
   {
     "id": "gue-015",
@@ -404,7 +485,13 @@
       "Parking spot",
       "Furnished"
     ],
-    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site."
+    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site.",
+    "poster": {
+      "name": "Mei L.",
+      "role": "student-sublet",
+      "replyTime": "Usually replies within a day",
+      "email": "mei.l@example.com"
+    }
   },
   {
     "id": "gue-016",
@@ -431,7 +518,13 @@
       "Shared kitchen",
       "Furnished"
     ],
-    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site."
+    "description": "Share a house with other students. Common areas are cleaned on a rota and the landlord lives off-site.",
+    "poster": {
+      "name": "Tom G.",
+      "role": "landlord",
+      "replyTime": "Usually replies within a few hours",
+      "email": "tom.g@example.com"
+    }
   },
   {
     "id": "gue-017",
@@ -457,7 +550,14 @@
       "Secure entry",
       "Kitchenette"
     ],
-    "description": "A self-contained studio with its own kitchenette and bathroom. Good for one person who wants their own space."
+    "description": "A self-contained studio with its own kitchenette and bathroom. Good for one person who wants their own space.",
+    "poster": {
+      "name": "Cedarline Property Co.",
+      "role": "property-manager",
+      "replyTime": "Usually replies within a few hours",
+      "phone": "519-555-0103",
+      "email": "cedarline.property.co@example.com"
+    }
   },
   {
     "id": "gue-018",
@@ -483,7 +583,13 @@
       "Parking spot",
       "Furnished"
     ],
-    "description": "A self-contained studio with its own kitchenette and bathroom. Good for one person who wants their own space."
+    "description": "A self-contained studio with its own kitchenette and bathroom. Good for one person who wants their own space.",
+    "poster": {
+      "name": "Bluebird Rentals",
+      "role": "property-manager",
+      "replyTime": "Usually replies within a few hours",
+      "phone": "519-555-0104"
+    }
   },
   {
     "id": "gue-019",
@@ -510,7 +616,14 @@
       "Kitchenette",
       "Furnished"
     ],
-    "description": "A self-contained studio with its own kitchenette and bathroom. Good for one person who wants their own space."
+    "description": "A self-contained studio with its own kitchenette and bathroom. Good for one person who wants their own space.",
+    "poster": {
+      "name": "Hana W.",
+      "role": "landlord",
+      "replyTime": "Usually replies within a few hours",
+      "phone": "519-555-0105",
+      "email": "hana.w@example.com"
+    }
   },
   {
     "id": "gue-020",
@@ -536,7 +649,13 @@
       "Laundry in building",
       "Furnished"
     ],
-    "description": "A self-contained studio with its own kitchenette and bathroom. Good for one person who wants their own space."
+    "description": "A self-contained studio with its own kitchenette and bathroom. Good for one person who wants their own space.",
+    "poster": {
+      "name": "Bluebird Rentals",
+      "role": "property-manager",
+      "replyTime": "Usually replies within a few hours",
+      "email": "bluebird.rentals@example.com"
+    }
   },
   {
     "id": "gue-021",
@@ -560,7 +679,13 @@
       "Kitchenette",
       "Parking spot"
     ],
-    "description": "A self-contained studio with its own kitchenette and bathroom. Good for one person who wants their own space."
+    "description": "A self-contained studio with its own kitchenette and bathroom. Good for one person who wants their own space.",
+    "poster": {
+      "name": "Cedarline Property Co.",
+      "role": "property-manager",
+      "replyTime": "Usually replies within a few hours",
+      "phone": "519-555-0106"
+    }
   },
   {
     "id": "gue-022",
@@ -585,7 +710,12 @@
       "Shared laundry",
       "Parking spot"
     ],
-    "description": "A private suite in the lower level of a family home. Separate entrance, its own kitchen and bathroom."
+    "description": "A private suite in the lower level of a family home. Separate entrance, its own kitchen and bathroom.",
+    "poster": {
+      "name": "Nadia C.",
+      "role": "landlord",
+      "replyTime": "Usually replies within a day"
+    }
   },
   {
     "id": "gue-023",
@@ -611,7 +741,12 @@
       "Shared laundry",
       "Full kitchen"
     ],
-    "description": "A private suite in the lower level of a family home. Separate entrance, its own kitchen and bathroom."
+    "description": "A private suite in the lower level of a family home. Separate entrance, its own kitchen and bathroom.",
+    "poster": {
+      "name": "Mei R.",
+      "role": "landlord",
+      "replyTime": "Usually replies within 2 days"
+    }
   },
   {
     "id": "gue-024",
@@ -638,7 +773,12 @@
       "Shared laundry",
       "Parking spot"
     ],
-    "description": "A private suite in the lower level of a family home. Separate entrance, its own kitchen and bathroom."
+    "description": "A private suite in the lower level of a family home. Separate entrance, its own kitchen and bathroom.",
+    "poster": {
+      "name": "Jordan J.",
+      "role": "landlord",
+      "replyTime": "Usually replies within a day"
+    }
   },
   {
     "id": "gue-025",
@@ -665,7 +805,14 @@
       "Full kitchen",
       "Private entrance"
     ],
-    "description": "A private suite in the lower level of a family home. Separate entrance, its own kitchen and bathroom."
+    "description": "A private suite in the lower level of a family home. Separate entrance, its own kitchen and bathroom.",
+    "poster": {
+      "name": "Marco H.",
+      "role": "landlord",
+      "replyTime": "Usually replies within a day",
+      "phone": "519-555-0107",
+      "email": "marco.h@example.com"
+    }
   },
   {
     "id": "gue-026",
@@ -691,7 +838,14 @@
       "Full kitchen",
       "Parking spot"
     ],
-    "description": "A private suite in the lower level of a family home. Separate entrance, its own kitchen and bathroom."
+    "description": "A private suite in the lower level of a family home. Separate entrance, its own kitchen and bathroom.",
+    "poster": {
+      "name": "Luca L.",
+      "role": "landlord",
+      "replyTime": "Usually replies within 2 days",
+      "phone": "519-555-0108",
+      "email": "luca.l@example.com"
+    }
   },
   {
     "id": "gue-027",
@@ -717,7 +871,13 @@
       "Shared laundry",
       "Parking spot"
     ],
-    "description": "A private suite in the lower level of a family home. Separate entrance, its own kitchen and bathroom."
+    "description": "A private suite in the lower level of a family home. Separate entrance, its own kitchen and bathroom.",
+    "poster": {
+      "name": "Marco S.",
+      "role": "landlord",
+      "replyTime": "Usually replies within a few hours",
+      "email": "marco.s@example.com"
+    }
   },
   {
     "id": "gue-028",
@@ -743,7 +903,12 @@
       "Shared laundry",
       "Private entrance"
     ],
-    "description": "A private suite in the lower level of a family home. Separate entrance, its own kitchen and bathroom."
+    "description": "A private suite in the lower level of a family home. Separate entrance, its own kitchen and bathroom.",
+    "poster": {
+      "name": "Ines J.",
+      "role": "landlord",
+      "replyTime": "Usually replies within 2 days"
+    }
   },
   {
     "id": "gue-029",
@@ -769,7 +934,12 @@
       "Balcony",
       "Gym"
     ],
-    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building."
+    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building.",
+    "poster": {
+      "name": "Bluebird Rentals",
+      "role": "property-manager",
+      "replyTime": "Usually replies within a few hours"
+    }
   },
   {
     "id": "gue-030",
@@ -794,7 +964,12 @@
       "Balcony",
       "Laundry in building"
     ],
-    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building."
+    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building.",
+    "poster": {
+      "name": "Cedarline Property Co.",
+      "role": "property-manager",
+      "replyTime": "Usually replies within a few hours"
+    }
   },
   {
     "id": "gue-031",
@@ -820,7 +995,13 @@
       "Elevator",
       "Parking spot"
     ],
-    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building."
+    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building.",
+    "poster": {
+      "name": "Mei A.",
+      "role": "landlord",
+      "replyTime": "Usually replies within a day",
+      "email": "mei.a@example.com"
+    }
   },
   {
     "id": "gue-032",
@@ -846,7 +1027,12 @@
       "Gym",
       "Furnished"
     ],
-    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building."
+    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building.",
+    "poster": {
+      "name": "Northstar Student Suites",
+      "role": "property-manager",
+      "replyTime": "Usually replies within a few hours"
+    }
   },
   {
     "id": "gue-033",
@@ -871,7 +1057,13 @@
       "Laundry in building",
       "Elevator"
     ],
-    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building."
+    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building.",
+    "poster": {
+      "name": "Bluebird Rentals",
+      "role": "property-manager",
+      "replyTime": "Usually replies within a few hours",
+      "email": "bluebird.rentals@example.com"
+    }
   },
   {
     "id": "gue-034",
@@ -896,7 +1088,13 @@
       "Laundry in building",
       "Dishwasher"
     ],
-    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building."
+    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building.",
+    "poster": {
+      "name": "Cedarline Property Co.",
+      "role": "property-manager",
+      "replyTime": "Usually replies within a few hours",
+      "email": "cedarline.property.co@example.com"
+    }
   },
   {
     "id": "gue-035",
@@ -921,7 +1119,12 @@
       "Balcony",
       "Gym"
     ],
-    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building."
+    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building.",
+    "poster": {
+      "name": "Bluebird Rentals",
+      "role": "property-manager",
+      "replyTime": "Usually replies within a few hours"
+    }
   },
   {
     "id": "gue-036",
@@ -946,7 +1149,13 @@
       "Parking spot",
       "Gym"
     ],
-    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building."
+    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building.",
+    "poster": {
+      "name": "Nadia B.",
+      "role": "landlord",
+      "replyTime": "Usually replies within a few hours",
+      "email": "nadia.b@example.com"
+    }
   },
   {
     "id": "gue-037",
@@ -971,7 +1180,12 @@
       "Balcony",
       "Dishwasher"
     ],
-    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building."
+    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building.",
+    "poster": {
+      "name": "Omar W.",
+      "role": "landlord",
+      "replyTime": "Usually replies within a day"
+    }
   },
   {
     "id": "gue-038",
@@ -995,7 +1209,13 @@
       "Parking spot",
       "Laundry in building"
     ],
-    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building."
+    "description": "An apartment in a small building with on-site management. Heat and water are managed by the building.",
+    "poster": {
+      "name": "Cedarline Property Co.",
+      "role": "property-manager",
+      "replyTime": "Usually replies within a few hours",
+      "email": "cedarline.property.co@example.com"
+    }
   },
   {
     "id": "gue-039",
@@ -1019,7 +1239,12 @@
       "Backyard",
       "Driveway parking"
     ],
-    "description": "Rent the whole house with friends. Tenants split rent and set up utilities in their own names."
+    "description": "Rent the whole house with friends. Tenants split rent and set up utilities in their own names.",
+    "poster": {
+      "name": "Leah B.",
+      "role": "landlord",
+      "replyTime": "Usually replies within a day"
+    }
   },
   {
     "id": "gue-040",
@@ -1044,6 +1269,11 @@
       "Dishwasher",
       "Laundry in house"
     ],
-    "description": "Rent the whole house with friends. Tenants split rent and set up utilities in their own names."
+    "description": "Rent the whole house with friends. Tenants split rent and set up utilities in their own names.",
+    "poster": {
+      "name": "Ines A.",
+      "role": "landlord",
+      "replyTime": "Usually replies within a few hours"
+    }
   }
 ]

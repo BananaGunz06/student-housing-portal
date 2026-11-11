@@ -19,6 +19,26 @@ describe('listingsRepo', () => {
     }
   })
 
+  test('every listing has a fictional poster', () => {
+    const roles = ['landlord', 'property-manager', 'student-sublet']
+    for (const { poster } of getAll()) {
+      expect(poster.name.trim()).not.toBe('')
+      expect(roles).toContain(poster.role)
+      expect(poster.replyTime).toMatch(/^Usually replies/)
+      // Reserved fictional ranges only, so no real person is listed.
+      if (poster.phone) expect(poster.phone).toMatch(/^519-555-01\d\d$/)
+      if (poster.email) expect(poster.email).toMatch(/@example\.com$/)
+    }
+  })
+
+  test('posters choose what to share: some keep phone and email private', () => {
+    const posters = getAll().map((l) => l.poster)
+    expect(posters.filter((p) => !p.phone && !p.email).length).toBeGreaterThanOrEqual(10)
+    expect(posters.some((p) => p.phone && !p.email)).toBe(true)
+    expect(posters.some((p) => p.email && !p.phone)).toBe(true)
+    expect(posters.some((p) => p.email && p.phone)).toBe(true)
+  })
+
   test('getById finds a listing and misses unknown ids', () => {
     const first = getAll()[0]
     expect(getById(first.id)).toEqual(first)

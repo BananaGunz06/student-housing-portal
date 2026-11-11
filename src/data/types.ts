@@ -5,6 +5,18 @@ export interface LatLng {
   lng: number
 }
 
+export type PosterRole = 'landlord' | 'property-manager' | 'student-sublet'
+
+/** Who posted a listing. Phone and email appear only if the poster chose to share them. */
+export interface Poster {
+  name: string
+  role: PosterRole
+  /** e.g. "Usually replies within a day". */
+  replyTime: string
+  phone?: string
+  email?: string
+}
+
 export interface Listing {
   id: string
   title: string
@@ -30,6 +42,7 @@ export interface Listing {
   availableFrom: string
   included: string[]
   description: string
+  poster: Poster
 }
 
 export interface Stop {
@@ -53,4 +66,10 @@ export const HOUSING_TYPE_LABELS: Record<HousingType, string> = {
   apartment: 'Apartment',
   basement: 'Basement apartment',
   house: 'Whole house',
+}
+
+export const POSTER_ROLE_LABELS: Record<PosterRole, string> = {
+  landlord: 'Landlord',
+  'property-manager': 'Property manager',
+  'student-sublet': 'Student subletting',
 }
