@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef } from 'react'
 import type { CloudState } from '../lib/backend/types'
+import { safeStorage } from '../lib/storage'
 import { cleanCloudState, mergeStates } from '../lib/sync'
 import { useAccount } from './AccountState'
 import { useAppState } from './AppState'
 
 const DEBOUNCE_MS = 800
+/** Which account the saved places and messages on this device belong to. */
+const OWNER_KEY = 'shp.owner'
 const json = (s: CloudState) => JSON.stringify(s)
 
 /**
@@ -13,7 +16,7 @@ const json = (s: CloudState) => JSON.stringify(s)
  * online, and forget personal data on sign out.
  */
 export function useCloudSync(): void {
-  const { backend, session, setSyncStatus } = useAccount()
+  const { backend, session, status, setSyncStatus } = useAccount()
   const { deviceState, replaceAll, clearPersonal } = useAppState()
   const userId = session?.userId ?? null
   const deviceJson = json(deviceState)
@@ -27,6 +30,8 @@ export function useCloudSync(): void {
     /** The user whose account has been read and merged. */
     loadedFor: null as string | null,
     loading: false,
+    /** JSON of the save in flight, if any; only one runs at a time. */
+    inflight: null as string | null,
     failed: false,
     /** What the account is known to hold. */
     lastSaved: null as string | null,
@@ -50,59 +55,77 @@ export function useCloudSync(): void {
     m.timer = null
     m.loadedFor = null
     m.loading = false
+    m.inflight = null
     m.failed = false
     m.lastSaved = null
   }, [])
 
   const save = useCallback(
-    async (gen: number) => {
-      const state = bag.current.device
-      setSyncStatus('saving')
-      try {
-        await backend.saveState(state)
-        if (gen !== bag.current.generation) return
-        bag.current.lastSaved = json(state)
-        bag.current.failed = false
-        setSyncStatus('saved')
-      } catch {
-        if (gen !== bag.current.generation) return
-        bag.current.failed = true
-        setSyncStatus('error')
+    async (gen: number): Promise<void> => {
+      const m = bag.current
+      // The running save checks again for newer changes when it finishes.
+      if (m.inflight !== null) return
+      for (;;) {
+        const state = m.device
+        const text = json(state)
+        if (text === m.lastSaved) {
+          setSyncStatus('saved')
+          return
+        }
+        m.inflight = text
+        setSyncStatus('saving')
+        try {
+          await backend.saveState(state)
+        } catch {
+          if (gen !== m.generation) return
+          m.inflight = null
+          m.failed = true
+          setSyncStatus('error')
+          return
+        }
+        if (gen !== m.generation) return
+        m.inflight = null
+        m.lastSaved = text
+        m.failed = false
+        if (m.loadedFor) safeStorage.set(OWNER_KEY, m.loadedFor)
       }
     },
-    [backend,  setSyncStatus],
+    [backend, setSyncStatus],
   )
 
   const load = useCallback(
     async (uid: string, gen: number) => {
-      if (bag.current.loading) return
-      bag.current.loading = true
+      const m = bag.current
+      if (m.loading) return
+      m.loading = true
       setSyncStatus('saving')
       try {
         const account = cleanCloudState(await backend.loadState())
-        if (gen !== bag.current.generation) return
-        const merged = mergeStates(bag.current.device, account)
+        if (gen !== m.generation) return
+        // Another account's places and messages never mix into this one.
+        const owner = safeStorage.get(OWNER_KEY)
+        const foreign = owner !== null && owner !== uid
+        const device = foreign ? { ...m.device, savedIds: [], messages: [] } : m.device
+        const merged = mergeStates(device, account)
+        if (foreign) clearPersonal()
         // Record before replacing, so the change this causes is not saved again.
-        bag.current.lastSaved = json(account)
-        bag.current.loadedFor = uid
-        bag.current.failed = false
+        m.lastSaved = json(account)
+        m.loadedFor = uid
+        m.failed = false
+        safeStorage.set(OWNER_KEY, uid)
         replaceAll(merged)
-        if (json(merged) !== json(account)) {
-          bag.current.device = merged
-          bag.current.loading = false
-          await save(gen)
-        } else {
-          setSyncStatus('saved')
-        }
+        m.device = merged
+        m.loading = false
+        await save(gen)
       } catch {
-        if (gen !== bag.current.generation) return
-        bag.current.failed = true
+        if (gen !== m.generation) return
+        m.failed = true
         setSyncStatus('error')
       } finally {
-        if (gen === bag.current.generation) bag.current.loading = false
+        if (gen === m.generation) m.loading = false
       }
     },
-    [backend, replaceAll, save, setSyncStatus],
+    [backend, clearPersonal, replaceAll, save, setSyncStatus],
   )
 
   /** Do whatever is outstanding: the first load, or a save of the current data. */
@@ -121,24 +144,34 @@ export function useCloudSync(): void {
       catchUp(userId)
     } else if (bag.current.previousUser) {
       clearPersonal()
+      safeStorage.remove(OWNER_KEY)
       setSyncStatus('idle')
     }
     bag.current.previousUser = userId
     return reset
   }, [userId, catchUp, clearPersonal, reset, setSyncStatus])
 
+  // Started with no session, but this device still holds a former user's data.
+  useEffect(() => {
+    if (status === 'signed-out' && safeStorage.get(OWNER_KEY) !== null) {
+      clearPersonal()
+      safeStorage.remove(OWNER_KEY)
+    }
+  }, [status, clearPersonal])
+
   // Changes after the account has loaded (or while a failed load waits for a retry).
   useEffect(() => {
     if (!userId || bag.current.loading) return
-    if (bag.current.loadedFor === userId && deviceJson === bag.current.lastSaved) return
+    if (bag.current.loadedFor === userId && (deviceJson === bag.current.lastSaved || deviceJson === bag.current.inflight)) return
     if (bag.current.loadedFor !== userId && !bag.current.failed) return
     clearTimer()
+    if (bag.current.loadedFor === userId) setSyncStatus('saving')
     bag.current.timer = setTimeout(() => {
       bag.current.timer = null
       catchUp(userId)
     }, DEBOUNCE_MS)
     return clearTimer
-  }, [userId,  deviceJson, catchUp, clearTimer])
+  }, [userId, deviceJson, catchUp, clearTimer, setSyncStatus])
 
   // Back online after a failure.
   useEffect(() => {
@@ -148,5 +181,5 @@ export function useCloudSync(): void {
     }
     window.addEventListener('online', onOnline)
     return () => window.removeEventListener('online', onOnline)
-  }, [userId,  catchUp])
+  }, [userId, catchUp])
 }

@@ -16,6 +16,13 @@ export const safeStorage = {
       // Not remembered, but the app keeps working.
     }
   },
+  remove(key: string): void {
+    try {
+      window.localStorage.removeItem(key)
+    } catch {
+      // Nothing to forget.
+    }
+  },
 }
 
 function read<T>(key: string, initial: T): T {

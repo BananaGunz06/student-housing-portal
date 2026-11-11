@@ -1,4 +1,4 @@
-import { act, render, waitFor } from '@testing-library/react'
+import { act, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_FILTERS } from '../lib/filters'
 import type { Message } from '../lib/messages'
@@ -32,10 +32,33 @@ function setup(backend: Backend) {
 }
 
 const flush = (ms = 0) => act(async () => void (await vi.advanceTimersByTimeAsync(ms)))
+async function waitUntil(check: () => void) {
+  let last: unknown
+  for (let i = 0; i < 40; i++) {
+    try {
+      return check()
+    } catch (e) {
+      last = e
+    }
+    await flush(10)
+  }
+  throw last
+}
+
+/** Make saves wait until the test releases them, one by one, in order. */
+function deferSaves(fake: Backend) {
+  const real = fake.saveState.bind(fake)
+  const waiting: (() => void)[] = []
+  const spy = vi.spyOn(fake, 'saveState').mockImplementation(
+    (s) => new Promise<void>((resolve) => waiting.push(() => void real(s).then(resolve))),
+  )
+  return { spy, release: () => act(async () => void waiting.shift()?.()) }
+}
+
 const U = { email: 'a@example.com', password: 'password123', name: 'A' }
 
 beforeEach(() => {
-  vi.useFakeTimers({ shouldAdvanceTime: true })
+  vi.useFakeTimers()
 })
 afterEach(() => {
   vi.useRealTimers()
@@ -49,7 +72,7 @@ describe('cloud sync', () => {
     act(() => ref.app.setBudget(900))
     await act(async () => void (await ref.account.signUp('A', U.email, U.password)))
     await flush()
-    await waitFor(() => expect(fake.stateOf(U.email).budget).toBe(900))
+    await waitUntil(() => expect(fake.stateOf(U.email).budget).toBe(900))
     expect(ref.account.syncStatus).toBe('saved')
   })
 
@@ -58,7 +81,7 @@ describe('cloud sync', () => {
     const ref = setup(fake)
     await flush()
     await act(async () => void (await ref.account.signIn(U.email, U.password)))
-    await waitFor(() => expect(ref.app.savedIds).toEqual([ID1, ID2]))
+    await waitUntil(() => expect(ref.app.savedIds).toEqual([ID1, ID2]))
     expect(ref.app.budget).toBe(800)
     expect(ref.app.messages).toHaveLength(1)
   })
@@ -66,7 +89,7 @@ describe('cloud sync', () => {
   it('sends a place saved while signed in to the account after 800 ms', async () => {
     const fake = createFakeBackend({ users: [U], sessionEmail: U.email })
     const ref = setup(fake)
-    await waitFor(() => expect(ref.account.syncStatus).toBe('saved'))
+    await waitUntil(() => expect(ref.account.syncStatus).toBe('saved'))
     act(() => ref.app.setSaved(ID1, true))
     await flush(700)
     expect(fake.stateOf(U.email).savedIds).toEqual([])
@@ -78,7 +101,7 @@ describe('cloud sync', () => {
   it('makes one save for two quick changes', async () => {
     const fake = createFakeBackend({ users: [U], sessionEmail: U.email })
     const ref = setup(fake)
-    await waitFor(() => expect(ref.account.syncStatus).toBe('saved'))
+    await waitUntil(() => expect(ref.account.syncStatus).toBe('saved'))
     const spy = vi.spyOn(fake, 'saveState')
     act(() => ref.app.setSaved(ID1, true))
     await flush(300)
@@ -92,7 +115,7 @@ describe('cloud sync', () => {
     const fake = createFakeBackend({ users: [{ ...U, state: { budget: 800, filters: DEFAULT_FILTERS, savedIds: [ID1] } }], sessionEmail: U.email })
     const spy = vi.spyOn(fake, 'saveState')
     const ref = setup(fake)
-    await waitFor(() => expect(ref.account.syncStatus).toBe('saved'))
+    await waitUntil(() => expect(ref.account.syncStatus).toBe('saved'))
     await flush(2000)
     expect(spy).not.toHaveBeenCalled()
   })
@@ -100,7 +123,7 @@ describe('cloud sync', () => {
   it('reports an error offline, then retries when back online', async () => {
     const fake = createFakeBackend({ users: [U], sessionEmail: U.email })
     const ref = setup(fake)
-    await waitFor(() => expect(ref.account.syncStatus).toBe('saved'))
+    await waitUntil(() => expect(ref.account.syncStatus).toBe('saved'))
     fake.setOffline(true)
     act(() => ref.app.setSaved(ID1, true))
     await flush(900)
@@ -108,7 +131,7 @@ describe('cloud sync', () => {
     expect(ref.app.savedIds).toEqual([ID1])
     fake.setOffline(false)
     await act(async () => void window.dispatchEvent(new Event('online')))
-    await waitFor(() => expect(ref.account.syncStatus).toBe('saved'))
+    await waitUntil(() => expect(ref.account.syncStatus).toBe('saved'))
     expect(fake.stateOf(U.email).savedIds).toEqual([ID1])
   })
 
@@ -116,20 +139,20 @@ describe('cloud sync', () => {
     const fake = createFakeBackend({ users: [{ ...U, state: { savedIds: [ID2] } }], sessionEmail: U.email })
     const load = vi.spyOn(fake, 'loadState').mockRejectedValueOnce(new Error('network'))
     const ref = setup(fake)
-    await waitFor(() => expect(ref.account.syncStatus).toBe('error'))
+    await waitUntil(() => expect(ref.account.syncStatus).toBe('error'))
     act(() => ref.app.setSaved(ID1, true))
     await flush(900)
     expect(load).toHaveBeenCalledTimes(2)
-    await waitFor(() => expect(ref.account.syncStatus).toBe('saved'))
+    await waitUntil(() => expect(ref.account.syncStatus).toBe('saved'))
     expect(fake.stateOf(U.email).savedIds.sort()).toEqual([ID1, ID2])
   })
 
   it('clears saved places and messages on sign out but keeps the budget', async () => {
     const fake = createFakeBackend({ users: [{ ...U, state: { budget: 800, savedIds: [ID1], messages: [msg('m1')] } }], sessionEmail: U.email })
     const ref = setup(fake)
-    await waitFor(() => expect(ref.app.savedIds).toEqual([ID1]))
+    await waitUntil(() => expect(ref.app.savedIds).toEqual([ID1]))
     await act(async () => void (await ref.account.signOut()))
-    await waitFor(() => expect(ref.app.savedIds).toEqual([]))
+    await waitUntil(() => expect(ref.app.savedIds).toEqual([]))
     expect(ref.app.messages).toEqual([])
     expect(ref.app.budget).toBe(800)
     expect(ref.account.syncStatus).toBe('idle')
@@ -141,11 +164,11 @@ describe('cloud sync', () => {
       sessionEmail: U.email,
     })
     const ref = setup(fake)
-    await waitFor(() => expect(ref.app.savedIds).toEqual([ID1]))
+    await waitUntil(() => expect(ref.app.savedIds).toEqual([ID1]))
     await act(async () => void (await ref.account.signOut()))
-    await waitFor(() => expect(ref.app.savedIds).toEqual([]))
+    await waitUntil(() => expect(ref.app.savedIds).toEqual([]))
     await act(async () => void (await ref.account.signIn('b@example.com', 'password123')))
-    await waitFor(() => expect(ref.account.syncStatus).toBe('saved'))
+    await waitUntil(() => expect(ref.account.syncStatus).toBe('saved'))
     await flush(2000)
     expect(ref.app.savedIds).toEqual([])
     expect(fake.stateOf('b@example.com').savedIds).toEqual([])
@@ -168,10 +191,78 @@ describe('cloud sync', () => {
       sessionEmail: U.email,
     })
     const ref = setup(fake)
-    await waitFor(() => expect(ref.account.syncStatus).toBe('saved'))
+    await waitUntil(() => expect(ref.account.syncStatus).toBe('saved'))
     expect(ref.app.savedIds).toEqual([ID1])
     expect(ref.app.messages.map((m) => m.id)).toEqual(['ok'])
     expect(ref.app.filters.types).toEqual(['room'])
     expect(ref.app.filters.bedrooms).toBe(DEFAULT_FILTERS.bedrooms)
+  })
+
+  it('saves a sign-in merge once even when the save is slow', async () => {
+    const fake = createFakeBackend()
+    const { spy, release } = deferSaves(fake)
+    const ref = setup(fake)
+    await flush()
+    act(() => ref.app.setBudget(900))
+    await act(async () => void (await ref.account.signUp('A', U.email, U.password)))
+    await flush(3000)
+    expect(spy).toHaveBeenCalledTimes(1)
+    await release()
+    await flush(3000)
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(fake.stateOf(U.email).budget).toBe(900)
+    expect(ref.account.syncStatus).toBe('saved')
+  })
+
+  it('runs one save at a time and ends with the latest state', async () => {
+    const fake = createFakeBackend({ users: [U], sessionEmail: U.email })
+    const ref = setup(fake)
+    await waitUntil(() => expect(ref.account.syncStatus).toBe('saved'))
+    const { spy, release } = deferSaves(fake)
+    act(() => ref.app.setSaved(ID1, true))
+    await flush(900)
+    expect(spy).toHaveBeenCalledTimes(1)
+    act(() => ref.app.setSaved(ID2, true))
+    await flush(900)
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(ref.account.syncStatus).toBe('saving')
+    await release()
+    await flush()
+    expect(spy).toHaveBeenCalledTimes(2)
+    expect(ref.account.syncStatus).toBe('saving')
+    await release()
+    await flush(3000)
+    expect(spy).toHaveBeenCalledTimes(2)
+    expect(fake.stateOf(U.email).savedIds).toEqual([ID1, ID2])
+    expect(ref.account.syncStatus).toBe('saved')
+  })
+
+  it("clears a former user's data when the session has expired at startup", async () => {
+    localStorage.setItem('shp.owner', 'user-1')
+    localStorage.setItem('shp.saved', JSON.stringify([ID1]))
+    localStorage.setItem('shp.messages', JSON.stringify([msg('m1')]))
+    localStorage.setItem('shp.budget', '800')
+    const ref = setup(createFakeBackend({ users: [U] }))
+    await waitUntil(() => expect(ref.app.savedIds).toEqual([]))
+    expect(ref.app.messages).toEqual([])
+    expect(ref.app.budget).toBe(800)
+    expect(localStorage.getItem('shp.owner')).toBeNull()
+  })
+
+  it("does not merge another user's places into a new sign-in", async () => {
+    localStorage.setItem('shp.owner', 'someone-else')
+    localStorage.setItem('shp.saved', JSON.stringify([ID1]))
+    localStorage.setItem('shp.messages', JSON.stringify([msg('m1')]))
+    const fake = createFakeBackend({ users: [{ ...U, state: { savedIds: [ID2] } }] })
+    const ref = setup(fake)
+    await flush()
+    await act(async () => void (await ref.account.signIn(U.email, U.password)))
+    await waitUntil(() => expect(ref.account.syncStatus).toBe('saved'))
+    await flush(2000)
+    expect(ref.app.savedIds).toEqual([ID2])
+    expect(ref.app.messages).toEqual([])
+    expect(fake.stateOf(U.email).savedIds).toEqual([ID2])
+    expect(fake.stateOf(U.email).messages).toEqual([])
+    expect(localStorage.getItem('shp.owner')).toBe('user-1')
   })
 })
