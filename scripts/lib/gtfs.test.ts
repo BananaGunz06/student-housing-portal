@@ -4,6 +4,8 @@ import {
   medianMinutes,
   parseCsv,
   parseTime,
+  activeServicesByDate,
+  representativeWeekday,
   scheduleLabel,
   serviceDates,
   simplifyLine,
@@ -211,5 +213,75 @@ describe('meta helpers', () => {
   })
   it('reads service dates from weekday calendar rows', () => {
     expect(serviceDates(feed.calendar)).toEqual({ serviceStart: '2026-01-04', serviceEnd: '2026-05-02' })
+  })
+})
+
+describe('representative weekday (calendar_dates)', () => {
+  // 2026-01-05 is a Monday. Service 12 (route r12, only via calendar_dates) is added on Mon 5th
+  // and Tue 6th; service 1 is removed on Tue 6th. Wed 7th has service 1 only.
+  const base = {
+    ...feed,
+    calendar: `service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date
+1,1,1,1,1,1,0,0,20260105,20260107
+`,
+    routes: `route_id,route_short_name,route_long_name,route_color
+r1,1,Regular,111111
+r12,56 U,University,222222
+`,
+    trips: `route_id,service_id,trip_id,shape_id
+r1,1,P1,
+r12,12,Q1,
+r12,12,Q2,
+`,
+    stop_times: `trip_id,arrival_time,departure_time,stop_id,stop_sequence
+P1, 8:00:00, 8:00:00,A,1
+P1, 8:10:00, 8:10:00,U1,2
+Q1, 8:00:00, 8:00:00,B,1
+Q1, 8:20:00, 8:20:00,U1,2
+Q2, 9:00:00, 9:00:00,B,1
+Q2, 9:20:00, 9:20:00,U1,2
+`,
+    shapes: 'shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\n',
+    calendar_dates: `service_id,date,exception_type
+12,20260105,1
+12,20260106,1
+1,20260106,2
+`,
+  }
+
+  it('applies additions and removals per date', () => {
+    const by = activeServicesByDate(
+      parseCsv(base.calendar),
+      parseCsv(base.calendar_dates),
+    )
+    expect([...(by.get('20260105') ?? [])].sort()).toEqual(['1', '12'])
+    expect([...(by.get('20260106') ?? [])]).toEqual(['12'])
+    expect([...(by.get('20260107') ?? [])]).toEqual(['1'])
+  })
+
+  it('picks the weekday with the most trips, earliest on ties', () => {
+    const by = activeServicesByDate(parseCsv(base.calendar), parseCsv(base.calendar_dates))
+    // Mon: 1 + 2 = 3 trips; Tue: 2; Wed: 1.
+    expect(representativeWeekday(by, parseCsv(base.trips))?.date).toBe('20260105')
+    const tie = representativeWeekday(by, parseCsv(base.trips).filter((t) => t.trip_id !== 'Q2'))
+    // Mon: 2, Tue: 1, Wed: 1.
+    expect(tie?.date).toBe('20260105')
+  })
+
+  it('keeps a route served only by a calendar_dates service and gives it ride times', () => {
+    const { routes, stops, representativeDate } = buildNetwork(base)
+    expect(representativeDate).toBe('2026-01-05')
+    expect(routes.features.map((f) => f.properties.shortName)).toEqual(['1', '56 U'])
+    const b = stops.features.find((f) => f.properties.id === 'B')!
+    expect(b.properties.toCampus).toEqual({ r12: 20 })
+  })
+
+  it('does not use a service removed on the chosen date', () => {
+    // Drop Q2 so Tue (service 12 only, service 1 removed) ties Mon on fewer trips; force Tue by
+    // making service 12 the larger one.
+    const heavy = { ...base, calendar_dates: 'service_id,date,exception_type\n12,20260106,1\n1,20260106,2\n', trips: base.trips }
+    const { routes, representativeDate } = buildNetwork(heavy)
+    expect(representativeDate).toBe('2026-01-06')
+    expect(routes.features.map((f) => f.properties.shortName)).toEqual(['56 U'])
   })
 })

@@ -11,6 +11,7 @@
  * @property {string} stops stops.txt
  * @property {string} shapes shapes.txt
  * @property {string} calendar calendar.txt
+ * @property {string} [calendar_dates] calendar_dates.txt (optional)
  */
 /**
  * @typedef {object} BuildOptions
@@ -97,6 +98,64 @@ export function weekdayServices(calendar) {
   return new Set(calendar.filter((r) => days.some((d) => r[d] === '1')).map((r) => r.service_id))
 }
 
+/** @param {string} d YYYYMMDD */
+const dayOfWeek = (d) => new Date(Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8))).getUTCDay()
+/** @param {Date} dt */
+const ymd = (dt) => dt.toISOString().slice(0, 10).replaceAll('-', '')
+
+/**
+ * Service ids active on each date: calendar.txt weekday flags inside start/end, plus
+ * calendar_dates exception 1 (added), minus exception 2 (removed).
+ * @param {Row[]} calendar
+ * @param {Row[]} calendarDates
+ * @returns {Map<string, Set<string>>} YYYYMMDD to service ids
+ */
+export function activeServicesByDate(calendar, calendarDates) {
+  const names = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+  /** @type {Map<string, Set<string>>} */
+  const byDate = new Map()
+  const at = (/** @type {string} */ d) => {
+    if (!byDate.has(d)) byDate.set(d, new Set())
+    return /** @type {Set<string>} */ (byDate.get(d))
+  }
+  for (const r of calendar) {
+    const end = Date.UTC(+r.end_date.slice(0, 4), +r.end_date.slice(4, 6) - 1, +r.end_date.slice(6, 8))
+    for (let t = Date.UTC(+r.start_date.slice(0, 4), +r.start_date.slice(4, 6) - 1, +r.start_date.slice(6, 8)); t <= end; t += 86400000) {
+      const d = ymd(new Date(t))
+      if (r[names[new Date(t).getUTCDay()]] === '1') at(d).add(r.service_id)
+    }
+  }
+  for (const e of calendarDates) if (e.exception_type === '1') at(e.date).add(e.service_id)
+  for (const e of calendarDates) if (e.exception_type === '2') byDate.get(e.date)?.delete(e.service_id)
+  return byDate
+}
+
+/**
+ * The Monday-Friday date whose active services run the most trips (ties: earliest).
+ * @param {Map<string, Set<string>>} byDate
+ * @param {Row[]} trips
+ * @returns {{ date: string, services: Set<string> } | null} date is YYYYMMDD
+ */
+export function representativeWeekday(byDate, trips) {
+  /** @type {Map<string, number>} */
+  const perService = new Map()
+  for (const t of trips) perService.set(t.service_id, (perService.get(t.service_id) ?? 0) + 1)
+  let best = null
+  let bestCount = -1
+  for (const date of [...byDate.keys()].sort()) {
+    const dow = dayOfWeek(date)
+    if (dow < 1 || dow > 5) continue
+    const services = /** @type {Set<string>} */ (byDate.get(date))
+    let count = 0
+    for (const id of services) count += perService.get(id) ?? 0
+    if (count > bestCount) {
+      bestCount = count
+      best = { date, services }
+    }
+  }
+  return best
+}
+
 /**
  * Metres east/north of a reference point (equirectangular, fine at city scale).
  * @param {LonLat} p
@@ -179,7 +238,8 @@ const byShortName = (a, b) => a.localeCompare(b, 'en', { numeric: true })
 
 /**
  * Build the app's routes and stops GeoJSON from raw GTFS file contents.
- * Only weekday services in calendar.txt are used (calendar_dates.txt is ignored).
+ * Uses one representative weekday (the Mon-Fri date with the most trips, after applying
+ * calendar_dates additions and removals); its date is returned as `representativeDate`.
  * @param {GtfsFiles} files
  * @param {BuildOptions} [options]
  */
@@ -190,8 +250,13 @@ export function buildNetwork(files, options = {}) {
   const winStart = options.windowStart ?? WINDOW_START
   const winEnd = options.windowEnd ?? WINDOW_END
 
-  const services = weekdayServices(parseCsv(files.calendar))
-  const trips = parseCsv(files.trips).filter((t) => services.has(t.service_id))
+  const allTrips = parseCsv(files.trips)
+  const rep = representativeWeekday(
+    activeServicesByDate(parseCsv(files.calendar), parseCsv(files.calendar_dates ?? '')),
+    allTrips,
+  )
+  const services = rep?.services ?? new Set()
+  const trips = allTrips.filter((t) => services.has(t.service_id))
   const tripsByRoute = new Map()
   for (const t of trips) {
     if (!tripsByRoute.has(t.route_id)) tripsByRoute.set(t.route_id, [])
@@ -301,6 +366,7 @@ export function buildNetwork(files, options = {}) {
   return {
     routes: { type: 'FeatureCollection', features: routeFeatures },
     stops: { type: 'FeatureCollection', features: stopFeatures },
+    representativeDate: rep ? isoDate(rep.date) : null,
   }
 }
 
