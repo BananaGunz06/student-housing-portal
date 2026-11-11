@@ -51,6 +51,14 @@
 - [ ] Implement; stops layer only at zoom ≥ 15; mini-map draws the chosen route's paths and the walk line.
 - [ ] Full suite, lint, build. Commit.
 
+### Task 1b: One-transfer trips in the converter (Sonnet, same builder as Task 1)
+
+Per stop, `viaTransfer: { minutes, firstRoute, secondRoute, transferStop: { id, name } }` = min over (route A from this stop → later stop B on the same trip, where B has a direct `toCampus` on a different route) of median ride A→B + 5 + toCampus[B][routeB]; departures from this stop 6:30–9:30 on the representative weekday; omit when the stop already has a direct time ≤ the best transfer time, or none exists. Fixture tests; report new coverage on the 40 listings.
+
+### Task 2b: App shows one-transfer commutes (Sonnet, same builder as Task 2, together with Task 2's review fixes)
+
+Commute `bus` gains optional `transfer: { secondRoute, stop }`; candidates include walk + viaTransfer.minutes; copy "≈N min by bus, 1 transfer · Route A then Route B" (describe) and "≈N min by bus, 1 transfer" (short). `transfer` mode remains only when nothing is reachable.
+
 ### Task 3: Copy, credit and docs (Haiku)
 
 **Files:** `MapView.tsx` notice, tile attribution string (`src/components/mapShared.ts`), `ListingDetail.tsx` commute note, `src/pages/Welcome.tsx`, `README.md` (About the data, how to refresh the feed, licence credit, budget copy), tests asserting copy.
