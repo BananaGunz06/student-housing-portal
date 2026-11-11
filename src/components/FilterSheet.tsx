@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { HOUSING_TYPE_LABELS, type HousingType } from '../data/types'
 import { DEFAULT_FILTERS, type Filters } from '../lib/filters'
 import { plural } from '../lib/format'
+import { useModal } from '../lib/useModal'
 
 const BEDROOMS: { value: Filters['bedrooms']; label: string }[] = [
   { value: 'any', label: 'Any' },
@@ -38,37 +39,10 @@ export default function FilterSheet({
 }) {
   const [f, setF] = useState(initial)
   const closeRef = useRef<HTMLButtonElement>(null)
-  const dialogRef = useRef<HTMLDivElement>(null)
   const set = (patch: Partial<Filters>) => setF((p) => ({ ...p, ...patch }))
   const count = countFor(f)
 
-  useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null
-    closeRef.current?.focus()
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-      if (e.key !== 'Tab' || !dialogRef.current) return
-      // Keep keyboard focus inside the sheet while it is open.
-      const els = dialogRef.current.querySelectorAll<HTMLElement>('button, input')
-      const first = els[0]
-      const last = els[els.length - 1]
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault()
-        last.focus()
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault()
-        first.focus()
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prev
-      opener?.focus()
-    }
-  }, [onClose])
+  const dialogRef = useModal(onClose, closeRef)
 
   const toggleType = (t: HousingType) =>
     set({ types: f.types.includes(t) ? f.types.filter((x) => x !== t) : [...f.types, t] })
