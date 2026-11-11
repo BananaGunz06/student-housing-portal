@@ -5,5 +5,5 @@
   "source": "https://mobilitydatabase.org/feeds/gtfs/mdb-3140",
   "representativeDate": "2026-01-08",
   "generated": "2026-11-11",
-  "note": "Times come from one typical weekday timetable (representativeDate), the Mon-Fri date with the most trips after calendar_dates additions and removals. Ride times: median scheduled minutes to the University Centre for arrivals 07:00-10:00."
+  "note": "Times come from one typical weekday timetable (representativeDate), the Mon-Fri date with the most trips after calendar_dates additions and removals. Ride times: median scheduled minutes to the University Centre for arrivals 07:00-10:00. One-transfer trips: departures 06:30–09:30 with 5 minutes added to change buses."
 }

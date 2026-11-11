@@ -18,7 +18,7 @@ Version 1 is a portfolio piece and an idea test. Browsing needs no account. Sign
 
 ## What it does
 
-- **Budget first.** One question to start ("What can you spend per month, all-in?"), with optional move-in month and bedrooms. Your budget stays on your device.
+- **Budget first.** One question to start ("What can you spend per month, all-in?"), with optional move-in month and bedrooms. Your budget stays on your device unless you sign in.
 - **True monthly cost.** Rent + utilities + internet + bus pass. Every result shows **Fits**, **Stretch** (up to 10% over) or **Over budget**, always as text and an icon, never colour alone. A meter shows the cost against your budget.
 - **Results.** Fits and Stretch places, cheapest first. A list/map toggle, plus filters for bedrooms, type of place, furnished, longest commute and move-in month. When nothing fits, it suggests the nearest budget that has results ("Nothing fits $600. 3 places fit at $650.").
 - **Map.** A price on every pin, coloured and marked by fit. Bus routes as lines, stops as dots, campus marked. Tap a pin for a preview.
@@ -58,18 +58,20 @@ One-time setup: in the repo's **Settings → Pages**, set **Source** to **GitHub
 
 ## About the data (read this)
 
-Everything here is **sample data for a demo**:
+Listings and posters are **sample data for a demo**, and the bus network is real:
 
 - **Listings** are 40 fictional places, priced to look like the Guelph student market. `scripts/generate-listings.mjs` generates them from a fixed seed into `src/data/listings.json`.
-- **Bus routes and stops are hand-made and approximate.** The plan was to convert Guelph Transit's public GTFS feed, but the city's data hosts weren't reachable from the build environment. So `scripts/build-sample-transit.mjs` draws 4 sample routes and 26 stops through the campus loop instead. They are **not** the real Guelph Transit network or schedule. To use the real network, convert the GTFS `stops.txt` and `shapes.txt` into the same two GeoJSON files in `src/data/transit/`.
+- **Bus routes, stops and ride times** come from Guelph Transit's official [GTFS feed](https://mobilitydatabase.org/feeds/gtfs/mdb-3140), currently the **Winter 2026** schedule. Transit data: City of Guelph (open data licence).
+- **Refreshing the bus data.** Run `node scripts/build-transit-from-gtfs.mjs` to download the latest feed, or pass the path to a downloaded zip: `node scripts/build-transit-from-gtfs.mjs path/to/feed.zip`. It rewrites `routes.geojson`, `stops.geojson` and `meta.json` in `src/data/transit/`. The parsing helpers live in `scripts/lib/gtfs.mjs`.
 - **Posters are fictional.** Names are made up, phone numbers use the reserved 555-01xx range and emails use `example.com`. About a third of posters share no phone or email, so messaging in the app is their only contact.
 - **Messaging is a demo.** Messages to sample listings aren't delivered to anyone, and posters can't reply yet. Messages are kept in your account, so they follow you to any device. The app says so on the message form and the Messages tab. Making it real needs a server that stores and delivers messages and gives posters an inbox; `AppState.sendMessage` and `listingsRepo` are where that would plug in.
 - **Photos are generated illustrations**, not real photos (`src/components/ListingArt.tsx`).
 - **Bus pass is $0 a month.** U of G undergraduates pay the Universal Bus Pass (UPass) through their student fees. Change `transitMonthly` in `src/data/campus.ts` for other campuses.
 - **Commute times are estimates**, marked "≈":
-  - Walking: straight-line distance × 1.3 at about 80 m a minute.
-  - Bus: distance along the route at about 20 km/h, plus the walk to the stop. Waiting time isn't included.
   - If the walk to campus is 15 minutes or less (or no slower than the bus), walking is shown.
+  - Otherwise, the best of a direct bus or one change of bus, from a stop within a 15-minute walk. Ride times are the median scheduled minutes on a typical weekday morning; a change of buses adds 5 minutes. Waiting for the bus isn't included.
+  - Walking: straight-line distance × 1.3 at about 80 m a minute.
+  - If no bus is within reach, the walking time is shown with "(no bus nearby)".
 - **Utilities and internet.** When they're not included, the listing's own estimate is used, falling back to the campus defaults.
 
 Map tiles come from OpenStreetMap (free, no API key). If tiles fail to load, the map still shows pins and routes with a notice, and the list works as normal.
@@ -80,7 +82,7 @@ React 19 + TypeScript + Vite, React Router, Tailwind CSS 4, Leaflet with react-l
 
 ```
 src/
-  data/          listings.json, campus.ts, transit/ (sample GeoJSON), types.ts
+  data/          listings.json, campus.ts, types.ts, transit/ (routes.geojson, stops.geojson, meta.json generated from GTFS)
   lib/
     listingsRepo.ts   the ONLY way screens get listings (getAll, getById); swap in an API here later
     cost.ts           trueMonthlyCost, fitStatus (Fits / Stretch / Over), money formatting
@@ -94,6 +96,10 @@ src/
                  MapView, pricePin, TransitLayer, MiniMap, CompareTable, BottomNav, ListingArt,
                  PosterCard, MessageSheet
   pages/         Welcome, Results, ListingDetail, Saved, Compare, Messages, Conversation, Account, NotFound
+scripts/
+  build-transit-from-gtfs.mjs   converts Guelph Transit's GTFS feed into src/data/transit/
+  lib/gtfs.mjs                  pure GTFS helpers (unit-tested)
+  generate-listings.mjs         generates the sample listings
 ```
 
 The maths in `src/lib` is plain TypeScript with no React, unit-tested directly, and shared by the list, map, detail and compare screens. The map code loads only when you open a map, so the list stays light.

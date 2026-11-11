@@ -37,7 +37,7 @@ const meta = {
   source: SOURCE,
   representativeDate,
   generated: new Date().toISOString().slice(0, 10),
-  note: 'Times come from one typical weekday timetable (representativeDate), the Mon-Fri date with the most trips after calendar_dates additions and removals. Ride times: median scheduled minutes to the University Centre for arrivals 07:00-10:00.',
+  note: 'Times come from one typical weekday timetable (representativeDate), the Mon-Fri date with the most trips after calendar_dates additions and removals. Ride times: median scheduled minutes to the University Centre for arrivals 07:00-10:00. One-transfer trips: departures 06:30–09:30 with 5 minutes added to change buses.',
 }
 
 writeFileSync(out('routes.geojson'), JSON.stringify(routes))

@@ -6,6 +6,7 @@ import MessageSheet from '../components/MessageSheet'
 import PosterCard from '../components/PosterCard'
 import ListingArt from '../components/ListingArt'
 import SaveButton from '../components/SaveButton'
+import { TRANSIT_META } from '../data/transit'
 import { HOUSING_TYPE_LABELS } from '../data/types'
 import { describeCommute } from '../lib/commute'
 import { formatMoney } from '../lib/cost'
@@ -81,8 +82,9 @@ export default function ListingDetail() {
             </Suspense>
           </div>
           <p className="mt-2 text-sm text-ink-soft">
-            Estimates. Walking uses straight-line distance plus 30% at about 80 metres a minute. Bus times are typical
-            scheduled rides from the Guelph Transit timetable, not live arrivals.
+            Estimates from Guelph Transit’s {TRANSIT_META.schedule} timetable for a typical weekday morning. Walking uses
+            straight-line distance plus 30% at about 80 metres a minute. Times don’t include waiting for the bus; a change
+            of buses adds 5 minutes.
           </p>
         </Section>
 

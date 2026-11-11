@@ -72,6 +72,16 @@ describe('Listing detail', () => {
     expect(screen.getByText(/Route \S+( \S)? then Route \S+( \S)? \(change at .+\) · ≈\d+ min to campus, 1 transfer$/)).toBeInTheDocument()
   })
 
+  test('explains where the times come from and what they leave out', () => {
+    setBudget(5000)
+    renderApp(`/listing/${withExtras.id}`)
+    expect(
+      screen.getByText(
+        'Estimates from Guelph Transit’s Winter 2026 timetable for a typical weekday morning. Walking uses straight-line distance plus 30% at about 80 metres a minute. Times don’t include waiting for the bus; a change of buses adds 5 minutes.',
+      ),
+    ).toBeInTheDocument()
+  })
+
   test('says so when no bus is nearby', () => {
     setBudget(5000)
     renderApp(`/listing/${REMOTE_ID}`)

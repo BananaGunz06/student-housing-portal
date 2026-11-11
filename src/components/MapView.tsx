@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { MapContainer, Marker, TileLayer, Tooltip } from 'react-leaflet'
 import { Link } from 'react-router-dom'
 import { CAMPUS } from '../data/campus'
+import { TRANSIT_META } from '../data/transit'
 import { HOUSING_TYPE_LABELS } from '../data/types'
 import { shortCommute } from '../lib/commute'
 import { formatMoney } from '../lib/cost'
@@ -70,7 +71,7 @@ export default function MapView({
       </MapContainer>
 
       <p className="pointer-events-none absolute top-3 right-3 left-14 z-[1000] w-fit rounded-full bg-card/95 px-3 py-1 text-sm">
-        {results.length} places, all-in prices. Coloured lines are bus routes.
+        {results.length} places, all-in prices. Bus routes: Guelph Transit, {TRANSIT_META.schedule} schedule.
       </p>
 
       {tilesFailed && (
