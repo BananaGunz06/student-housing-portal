@@ -39,7 +39,7 @@ npm run build    # type-check and production build
 
 ## Accounts
 
-Signing in is optional. You can search, save places and send messages without an account, and your data stays in this browser.
+Browsing needs no account: search, filters and every listing work without signing in. Saving places and messaging a poster ask you to sign in. Budget and filters you set before signing in move into your account when you sign in. After that, your saved places and messages are kept in the account and follow you to any device.
 
 - **What syncs.** Once you create an account or sign in, your budget, filters, saved places and messages sync to it, so they show up on any device. Your name and optional phone number are kept on your profile, which fills in the message form. The **Account** tab shows your email, lets you edit your details, log out, or delete your account (which removes your saved places, messages and sign-in).
 - **Browsing never needs sign-in.** Only saving places and messaging a poster ask you to sign in, and you can dismiss that prompt.
@@ -63,7 +63,7 @@ Everything here is **sample data for a demo**:
 - **Listings** are 40 fictional places, priced to look like the Guelph student market. `scripts/generate-listings.mjs` generates them from a fixed seed into `src/data/listings.json`.
 - **Bus routes and stops are hand-made and approximate.** The plan was to convert Guelph Transit's public GTFS feed, but the city's data hosts weren't reachable from the build environment. So `scripts/build-sample-transit.mjs` draws 4 sample routes and 26 stops through the campus loop instead. They are **not** the real Guelph Transit network or schedule. To use the real network, convert the GTFS `stops.txt` and `shapes.txt` into the same two GeoJSON files in `src/data/transit/`.
 - **Posters are fictional.** Names are made up, phone numbers use the reserved 555-01xx range and emails use `example.com`. About a third of posters share no phone or email, so messaging in the app is their only contact.
-- **Messaging is a demo.** Messages are saved in your browser (or in your account, once you sign in) and aren't sent to anyone, and posters can't reply yet. The app says so on the message form and the Messages tab. Making it real needs a server that stores and delivers messages and gives posters an inbox; `AppState.sendMessage` and `listingsRepo` are where that would plug in.
+- **Messaging is a demo.** Messages to sample listings aren't delivered to anyone, and posters can't reply yet. Messages are kept in your account, so they follow you to any device. The app says so on the message form and the Messages tab. Making it real needs a server that stores and delivers messages and gives posters an inbox; `AppState.sendMessage` and `listingsRepo` are where that would plug in.
 - **Photos are generated illustrations**, not real photos (`src/components/ListingArt.tsx`).
 - **Bus pass is $0 a month.** U of G undergraduates pay the Universal Bus Pass (UPass) through their student fees. Change `transitMonthly` in `src/data/campus.ts` for other campuses.
 - **Commute times are estimates**, marked "≈":

@@ -48,6 +48,7 @@ describe('Messaging a poster', () => {
     expect(body).toHaveFocus()
     expect((body as HTMLTextAreaElement).value).toMatch(new RegExp(`^Hi ${first}, is the`))
     expect(within(dialog).getByText(`Only what you fill in is shared with ${first}.`, { exact: false })).toBeInTheDocument()
+    expect(within(dialog).getByText(`Demo: this is a sample listing, so your message isn’t sent to ${first}. It’s kept in your account.`)).toBeInTheDocument()
 
     // Empty message and a bad phone number are caught.
     await user.clear(body)
@@ -74,7 +75,7 @@ describe('Messaging a poster', () => {
 
     await user.click(screen.getByRole('link', { name: 'Messages' }))
     expect(screen.getByRole('heading', { level: 1, name: 'Messages' })).toBeInTheDocument()
-    expect(screen.getByText(/aren’t sent to anyone/)).toBeInTheDocument()
+    expect(screen.getByText('Demo: messages to sample listings aren’t delivered to anyone yet. Poster replies are coming soon.')).toBeInTheDocument()
     const row = screen.getByRole('link', { name: new RegExp(l.title) })
     expect(row).toHaveTextContent('Is it still free in January?')
     expect(row).toHaveTextContent('Waiting for a reply')

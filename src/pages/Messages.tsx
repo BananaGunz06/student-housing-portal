@@ -8,8 +8,7 @@ import { useAppState } from '../state/AppState'
 export function DemoBanner() {
   return (
     <p className="mt-3 rounded-xl bg-highlight/50 px-3 py-2 text-sm">
-      Demo: messages are saved on this device only and aren’t sent to anyone. Poster replies will come with a real
-      server.
+      Demo: messages to sample listings aren’t delivered to anyone yet. Poster replies are coming soon.
     </p>
   )
 }

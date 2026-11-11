@@ -155,7 +155,7 @@ export default function MessageSheet({
             </fieldset>
 
             <p className="rounded-xl bg-highlight/50 px-3 py-2 text-sm">
-              Demo: your message is saved on this device only. It isn’t sent to {first}.
+              Demo: this is a sample listing, so your message isn’t sent to {first}. It’s kept in your account.
             </p>
           </div>
 

@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import { useEffect } from 'react'
 import { describe, expect, test, vi } from 'vitest'
-import type { AuthResult, Backend } from '../lib/backend/types'
+import type { AuthResult, Backend, Profile } from '../lib/backend/types'
 import { getAll } from '../lib/listingsRepo'
 import { greetingName } from '../lib/messages'
 import { createFakeBackend } from '../test/fakeBackend'
@@ -276,6 +276,41 @@ describe('Account page', () => {
     expect(screen.getByLabelText('Name')).toHaveValue(student.name)
   })
 
+  test('typing before the profile loads is kept when it arrives', async () => {
+    const base = createFakeBackend({ users: [student], sessionEmail: student.email })
+    let resolve!: (p: Profile) => void
+    const backend: Backend = { ...base, loadProfile: () => new Promise<Profile>((r) => (resolve = r)) }
+    const { user } = renderApp('/account', { backend })
+    await sessionReady()
+    await user.type(screen.getByLabelText('Name'), 'Typed')
+    await act(async () => resolve({ displayName: student.name, phone: '555-0100' }))
+    expect(screen.getByLabelText('Name')).toHaveValue('Typed')
+    expect(screen.getByLabelText('Phone (optional)')).toHaveValue('555-0100')
+  })
+
+  test('when the profile could not load, Save shows Saved and it stays visible', async () => {
+    const base = createFakeBackend({ users: [student], sessionEmail: student.email })
+    const backend: Backend = { ...base, loadProfile: async () => Promise.reject(new Error('network')) }
+    const { user } = renderApp('/account', { backend })
+    await sessionReady()
+    await user.type(screen.getByLabelText('Name'), 'Fresh')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByText('Saved', { selector: 'p' })).toBeInTheDocument()
+    await sessionReady()
+    expect(screen.getByText('Saved', { selector: 'p' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Name')).toHaveValue('Fresh')
+  })
+
+  test('editing after a save clears the Saved message', async () => {
+    const { user } = renderApp('/account', { signedInAs: student.email })
+    await sessionReady()
+    await waitFor(() => expect(screen.getByLabelText('Name')).toHaveValue(student.name))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByText('Saved', { selector: 'p' })).toBeInTheDocument()
+    await user.type(screen.getByLabelText('Phone (optional)'), '5')
+    expect(screen.queryByText('Saved', { selector: 'p' })).toBeNull()
+  })
+
   test('a blank name is refused before any save', async () => {
     const base = createFakeBackend({ users: [student], sessionEmail: student.email })
     const saveProfile = vi.fn(base.saveProfile)
@@ -312,6 +347,22 @@ describe('Account page', () => {
     await user.click(screen.getByRole('button', { name: 'Delete my account' }))
     expect(await screen.findByText(SIGNED_OUT_LINE)).toBeInTheDocument()
     expect(await backend.signIn(student.email, student.password)).toEqual({ ok: false, error: 'invalid-credentials' })
+  })
+
+  test('opening the delete confirmation moves focus to Cancel, and the group is named by the question', async () => {
+    const { user } = renderApp('/account', { signedInAs: student.email })
+    await sessionReady()
+    await user.click(screen.getByRole('button', { name: 'Delete account' }))
+    expect(screen.getByRole('group', { name: DELETE_QUESTION })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus()
+  })
+
+  test('Cancel returns focus to Delete account', async () => {
+    const { user } = renderApp('/account', { signedInAs: student.email })
+    await sessionReady()
+    await user.click(screen.getByRole('button', { name: 'Delete account' }))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByRole('button', { name: 'Delete account' })).toHaveFocus()
   })
 
   test('Cancel hides the delete confirmation and keeps the account', async () => {
