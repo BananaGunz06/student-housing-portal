@@ -1,0 +1,450 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "woodlawn-woolwich",
+        "name": "Woodlawn & Woolwich",
+        "routes": [
+          "99"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.262,
+          43.572
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "woolwich-speedvale",
+        "name": "Woolwich & Speedvale",
+        "routes": [
+          "99"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.256,
+          43.56
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "guelph-central-station",
+        "name": "Guelph Central Station",
+        "routes": [
+          "99"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.2485,
+          43.544
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "gordon-wellington",
+        "name": "Gordon & Wellington",
+        "routes": [
+          "99"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.242,
+          43.54
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "gordon-dean",
+        "name": "Gordon & Dean",
+        "routes": [
+          "99"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.234,
+          43.536
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "campus",
+        "name": "University Centre",
+        "routes": [
+          "99",
+          "50",
+          "20",
+          "40"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.2262,
+          43.5305
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "gordon-stone",
+        "name": "Gordon & Stone",
+        "routes": [
+          "99"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.225,
+          43.519
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "gordon-kortright",
+        "name": "Gordon & Kortright",
+        "routes": [
+          "99"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.22,
+          43.508
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "gordon-clair",
+        "name": "Gordon & Clair",
+        "routes": [
+          "99"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.212,
+          43.496
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "stone-road-mall",
+        "name": "Stone Road Mall",
+        "routes": [
+          "50"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.256,
+          43.515
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "stone-scottsdale",
+        "name": "Stone & Scottsdale",
+        "routes": [
+          "50"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.244,
+          43.5165
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "stone-hanlon-creek",
+        "name": "Stone & Hanlon Creek",
+        "routes": [
+          "50"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.233,
+          43.5185
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "stone-gordon-west",
+        "name": "Stone & Gordon (west)",
+        "routes": [
+          "50"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.228,
+          43.525
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "stone-east-ring",
+        "name": "Stone & East Ring",
+        "routes": [
+          "50"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.218,
+          43.526
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "stone-victoria",
+        "name": "Stone & Victoria",
+        "routes": [
+          "50"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.2,
+          43.527
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "stone-watson",
+        "name": "Stone & Watson",
+        "routes": [
+          "50"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.188,
+          43.53
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "edinburgh-willow",
+        "name": "Edinburgh & Willow",
+        "routes": [
+          "20"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.278,
+          43.565
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "edinburgh-speedvale",
+        "name": "Edinburgh & Speedvale",
+        "routes": [
+          "20"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.27,
+          43.552
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "edinburgh-paisley",
+        "name": "Edinburgh & Paisley",
+        "routes": [
+          "20"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.266,
+          43.545
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "edinburgh-college",
+        "name": "Edinburgh & College",
+        "routes": [
+          "20"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.26,
+          43.531
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "college-lansdown",
+        "name": "College & Lansdown",
+        "routes": [
+          "20"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.245,
+          43.5315
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "college-gordon",
+        "name": "College & Gordon",
+        "routes": [
+          "20"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.234,
+          43.532
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "eramosa-victoria",
+        "name": "Eramosa & Victoria",
+        "routes": [
+          "40"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.205,
+          43.556
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "york-victoria",
+        "name": "York & Victoria",
+        "routes": [
+          "40"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.213,
+          43.545
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "victoria-ireland",
+        "name": "Victoria & Ireland",
+        "routes": [
+          "40"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.215,
+          43.54
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "college-victoria",
+        "name": "College & Victoria",
+        "routes": [
+          "40"
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.215,
+          43.533
+        ]
+      }
+    }
+  ]
+}
