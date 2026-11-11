@@ -1,10 +1,11 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
 import type { AuthResult, Backend } from '../lib/backend/types'
 import { getAll } from '../lib/listingsRepo'
 import { greetingName } from '../lib/messages'
 import { createFakeBackend } from '../test/fakeBackend'
 import { renderApp, setBudget } from '../test/renderApp'
+import { AppStateProvider, useAppState } from '../state/AppState'
 
 vi.mock('../components/MiniMap', () => ({ default: () => <div>mini map</div> }))
 
@@ -177,5 +178,58 @@ describe('Sign-in errors and states', () => {
     expect(await screen.findByText('Check your email to confirm your account, then sign in.')).toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: 'Sign in' })).toBeInTheDocument()
     expect(saveButton()).toHaveAttribute('aria-pressed', 'false')
+  })
+})
+
+describe('Dismissing while a request is in flight', () => {
+  function deferredBackend() {
+    let resolve!: (r: AuthResult) => void
+    const base = createFakeBackend({ users: [taken] })
+    const signIn = vi.fn(() => new Promise<AuthResult>((r) => (resolve = r)))
+    return { backend: { ...base, signIn } as Backend, resolve: (r: AuthResult) => resolve(r) }
+  }
+  async function submitThenEscape(user: ReturnType<typeof renderApp>['user']) {
+    const dialog = screen.getByRole('dialog', { name: 'Sign in' })
+    await user.type(within(dialog).getByLabelText('Email'), taken.email)
+    await user.type(within(dialog).getByLabelText('Password'), taken.password)
+    await user.click(within(dialog).getByRole('button', { name: 'Sign in' }))
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).toBeNull()
+  }
+
+  test('a dismissed Save is not replayed when the request later succeeds', async () => {
+    setBudget(1000)
+    const { backend, resolve } = deferredBackend()
+    const { user } = renderApp(`/listing/${listing.id}`, { backend })
+    await user.click(saveButton())
+    await submitThenEscape(user)
+    await act(async () => resolve({ ok: true, needsConfirmation: false }))
+    expect(saveButton()).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  test('a dismissed Message does not open the message form later', async () => {
+    setBudget(1000)
+    const { backend, resolve } = deferredBackend()
+    const { user } = renderApp(`/listing/${listing.id}`, { backend })
+    await user.click(messageButton())
+    await submitThenEscape(user)
+    await act(async () => resolve({ ok: true, needsConfirmation: false }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+})
+
+describe('Save replay', () => {
+  test('replaying a save on an already-saved place keeps it saved', async () => {
+    setBudget(1000)
+    localStorage.setItem('shp.saved', JSON.stringify([listing.id]))
+    const { user } = renderApp(`/listing/${listing.id}`)
+    expect(saveButton()).toHaveAttribute('aria-pressed', 'true')
+    function Probe() {
+      const { setSaved } = useAppState()
+      return <button onClick={() => setSaved(listing.id, true)}>replay</button>
+    }
+    render(<AppStateProvider><Probe /></AppStateProvider>)
+    await user.click(screen.getByRole('button', { name: 'replay' }))
+    expect(JSON.parse(localStorage.getItem('shp.saved')!)).toEqual([listing.id])
   })
 })

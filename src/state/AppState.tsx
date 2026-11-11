@@ -15,6 +15,7 @@ export interface AppState {
   savedIds: string[]
   isSaved: (id: string) => boolean
   toggleSaved: (id: string) => void
+  setSaved: (id: string, saved: boolean) => void
   /** Messages sent from this device, for listings that still exist. */
   messages: Message[]
   sendMessage: (listingId: string, body: string, shared: SharedDetails) => void
@@ -27,7 +28,7 @@ const Ctx = createContext<AppState | null>(null)
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [budget, setBudgetRaw] = useLocalStorage<number | null>('shp.budget', null)
   const [storedFilters, setFilters] = useLocalStorage<Filters>('shp.filters', DEFAULT_FILTERS)
-  const [savedRaw, setSaved] = useLocalStorage<string[]>('shp.saved', [])
+  const [savedRaw, setSavedRaw] = useLocalStorage<string[]>('shp.saved', [])
   const [messagesRaw, setMessages] = useLocalStorage<Message[]>('shp.messages', [])
 
   // Stored filters may predate a new field; fill gaps from the defaults.
@@ -57,11 +58,21 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const isSaved = useCallback((id: string) => savedIds.includes(id), [savedIds])
   const toggleSaved = useCallback(
     (id: string) =>
-      setSaved((prev) => {
+      setSavedRaw((prev) => {
         const clean = (Array.isArray(prev) ? prev : []).filter((x) => getById(x))
         return clean.includes(id) ? clean.filter((x) => x !== id) : [...clean, id]
       }),
-    [setSaved],
+    [setSavedRaw],
+  )
+  /** Set a place to saved or not saved; unlike toggleSaved, safe to repeat. */
+  const setSaved = useCallback(
+    (id: string, saved: boolean) =>
+      setSavedRaw((prev) => {
+        const clean = (Array.isArray(prev) ? prev : []).filter((x) => getById(x))
+        if (clean.includes(id) === saved) return clean
+        return saved ? [...clean, id] : clean.filter((x) => x !== id)
+      }),
+    [setSavedRaw],
   )
 
   const value = useMemo(
@@ -73,11 +84,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       savedIds,
       isSaved,
       toggleSaved,
+      setSaved,
       messages,
       sendMessage,
       lastShared,
     }),
-    [budget, setBudget, filters, setFilters, savedIds, isSaved, toggleSaved, messages, sendMessage, lastShared],
+    [budget, setBudget, filters, setFilters, savedIds, isSaved, toggleSaved, setSaved, messages, sendMessage, lastShared],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

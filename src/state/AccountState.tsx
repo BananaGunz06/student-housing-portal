@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import SignInSheet from '../components/SignInSheet'
 import type { AuthResult, Backend, Profile, Session } from '../lib/backend/types'
 
@@ -19,13 +19,18 @@ export interface AccountApi {
   syncStatus: SyncStatus
 }
 
+interface Pending {
+  reason: AccountReason
+  then: () => void
+}
+
 const AccountContext = createContext<AccountApi | null>(null)
 
 export function AccountProvider({ backend, children }: { backend: Backend; children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [loadedProfile, setLoadedProfile] = useState<{ userId: string; profile: Profile } | null>(null)
-  const [pending, setPending] = useState<{ reason: AccountReason; then: () => void } | null>(null)
+  const [pending, setPending] = useState<Pending | null>(null)
   const signedIn = session !== null
 
   useEffect(() => {
@@ -65,18 +70,28 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
 
   // Only the profile of the current user counts; a stale one is ignored.
   const profile = loadedProfile && loadedProfile.userId === userId ? loadedProfile.profile : null
+  // The ref is the truth about which action is waiting; `pending` only drives rendering.
+  const pendingRef = useRef<Pending | null>(null)
   const requireAccount = useCallback(
     (reason: AccountReason, then: () => void) => {
       if (signedIn) return then()
-      setPending((cur) => cur ?? { reason, then })
+      if (pendingRef.current) return
+      pendingRef.current = { reason, then }
+      setPending(pendingRef.current)
     },
     [signedIn],
   )
-  const done = useCallback(() => {
+  /** Finish one specific request; does nothing if it was dismissed meanwhile. */
+  const finish = useCallback((p: Pending) => {
+    if (pendingRef.current !== p) return
+    pendingRef.current = null
     setPending(null)
-    pending?.then()
-  }, [pending])
-  const dismiss = useCallback(() => setPending(null), [])
+    p.then()
+  }, [])
+  const dismiss = useCallback(() => {
+    pendingRef.current = null
+    setPending(null)
+  }, [])
 
   const api = useMemo<AccountApi>(
     () => ({
@@ -100,7 +115,7 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
   return (
     <AccountContext.Provider value={api}>
       {children}
-      {pending && <SignInSheet reason={pending.reason} onDone={done} onClose={dismiss} />}
+      {pending && <SignInSheet reason={pending.reason} onDone={() => finish(pending)} onClose={dismiss} />}
     </AccountContext.Provider>
   )
 }

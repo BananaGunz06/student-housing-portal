@@ -10,7 +10,7 @@ export default function SaveButton({
   title: string
   className?: string
 }) {
-  const { isSaved, toggleSaved } = useAppState()
+  const { isSaved, toggleSaved, setSaved } = useAppState()
   const { requireAccount } = useAccount()
   const saved = isSaved(id)
   return (
@@ -18,7 +18,7 @@ export default function SaveButton({
       type="button"
       aria-pressed={saved}
       aria-label={`Save ${title}`}
-      onClick={() => (saved ? toggleSaved(id) : requireAccount('save', () => toggleSaved(id)))}
+      onClick={() => (saved ? toggleSaved(id) : requireAccount('save', () => setSaved(id, true)))}
       className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border-2 px-4 font-bold ${
         saved ? 'border-ink bg-ink text-white' : 'border-ink bg-card text-ink'
       } ${className}`}
