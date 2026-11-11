@@ -48,7 +48,7 @@ function Field({
   )
 }
 
-/** Bottom sheet for messaging a poster. Every detail about the student is optional. */
+/** Bottom sheet on phones, centred dialog on larger screens, for messaging a poster. Every detail about the student is optional. */
 export default function MessageSheet({
   listing,
   onClose,
@@ -91,24 +91,24 @@ export default function MessageSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-[1200] flex items-end justify-center">
+    <div className="fixed inset-0 z-[1200] flex items-end justify-center sm:items-center sm:p-6">
       <div className="absolute inset-0 bg-ink/40" onClick={onClose} aria-hidden="true" />
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-3xl bg-paper"
+        className="relative flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-3xl bg-paper sm:max-h-[calc(100dvh-3rem)] sm:rounded-3xl"
       >
         <form noValidate onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
-          <div className="border-b border-line px-5 py-3">
+          <div className="shrink-0 border-b border-line px-5 py-3">
             <h2 id={titleId} className="font-display text-2xl font-bold">
               Message {first}
             </h2>
             <p className="text-sm text-ink-soft">About: {listing.title}</p>
           </div>
 
-          <div className="flex flex-col gap-4 overflow-y-auto px-5 py-4">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">
             <Field label="Your message" error={errors.body}>
               {(props) => (
                 <textarea
@@ -159,7 +159,7 @@ export default function MessageSheet({
             </p>
           </div>
 
-          <div className="flex gap-3 border-t border-line px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="flex shrink-0 gap-3 border-t border-line px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <button type="button" className="min-h-12 rounded-full px-4 font-bold underline" onClick={onClose}>
               Cancel
             </button>
