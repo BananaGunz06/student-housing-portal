@@ -7,7 +7,6 @@ import {
   commuteMinutes,
   describeCommute,
   distanceMeters,
-  nearestStop,
   shortCommute,
   walkMinutes,
   type Commute,
@@ -53,15 +52,6 @@ const stopAt = (id: string, dLat: number, toCampus: Record<string, number>): Sto
 })
 const FAR_CAMPUS = { lat: 43.6, lng: -80.2 }
 const HOME = { lat: 43.5, lng: -80.2 }
-
-describe('nearestStop', () => {
-  test('picks the closest stop', () => {
-    const { stop, meters } = nearestStop(HOME, [stopAt('far', 0.004, {}), stopAt('near', 0.001, {})])
-    expect(stop.id).toBe('near')
-    expect(meters).toBeGreaterThan(100)
-    expect(meters).toBeLessThan(120)
-  })
-})
 
 describe('campusCommute (synthetic network)', () => {
   test('a direct bus beats a long walk: walk to stop plus ride', () => {
@@ -126,10 +116,53 @@ describe('campusCommute (synthetic network)', () => {
   })
 })
 
+const viaStop = (id: string, dLat: number, via: Stop['viaTransfer']): Stop => ({
+  id,
+  name: id,
+  lat: 43.5 + dLat,
+  lng: -80.2,
+  routes: [via!.firstRoute],
+  toCampus: {},
+  viaTransfer: via,
+})
+const VIA = {
+  minutes: 30,
+  firstRoute: 'r2',
+  secondRoute: 'r99',
+  transferStop: { id: 'x', name: 'Transfer St' },
+}
+
+describe('campusCommute with one transfer (synthetic network)', () => {
+  test('uses the transfer trip when there is no direct ride', () => {
+    const c = campusCommute(HOME, [viaStop('v', 0.001, VIA)], [R2, R99], FAR_CAMPUS)
+    expect(c.mode).toBe('bus')
+    if (c.mode !== 'bus') return
+    expect(c.minutes).toBe(2 + 30)
+    expect(c.route.id).toBe('r2')
+    expect(c.transfer).toEqual({ secondRoute: R99, stop: { id: 'x', name: 'Transfer St' } })
+  })
+
+  test('a shorter direct ride beats a transfer trip', () => {
+    const direct = stopAt('d', 0.0045, { r1: 10 }) // 7 + 10
+    const c = campusCommute(HOME, [viaStop('v', 0.001, VIA), direct], [R1, R2, R99], FAR_CAMPUS)
+    expect(c.mode === 'bus' && c.stop.id).toBe('d')
+    expect(c.mode === 'bus' && c.transfer).toBeUndefined()
+  })
+
+  test('a shorter transfer trip beats a longer direct ride', () => {
+    const slowDirect = stopAt('d', 0.001, { r1: 60 })
+    const c = campusCommute(HOME, [slowDirect, viaStop('v', 0.001, VIA)], [R1, R2, R99], FAR_CAMPUS)
+    expect(c.mode === 'bus' && c.transfer?.secondRoute.id).toBe('r99')
+  })
+
+  test('a transfer stop out of walking range is not used', () => {
+    expect(campusCommute(HOME, [viaStop('v', 0.0065, VIA)], [R2, R99], FAR_CAMPUS)).toEqual({ mode: 'transfer' })
+  })
+})
+
 describe('campusCommute (real Guelph Transit network)', () => {
   test('a place 300 m from campus is a walk', () => {
     const c = campusCommute({ lat: CAMPUS.lat + 0.0027, lng: CAMPUS.lng })
-    expect(c.mode).toBe('walk')
     expect(c).toEqual({ mode: 'walk', minutes: 5 })
   })
 
@@ -168,6 +201,19 @@ describe('commute text', () => {
   }
   const walk: Commute = { mode: 'walk', minutes: 9 }
   const transfer: Commute = { mode: 'transfer' }
+
+  const oneTransfer: Commute = {
+    ...(bus as Extract<Commute, { mode: 'bus' }>),
+    minutes: 34,
+    transfer: { secondRoute: R99, stop: { id: 'x', name: 'Transfer St' } },
+    route: R2,
+  }
+
+  test('one-transfer copy', () => {
+    expect(describeCommute(oneTransfer)).toBe('≈6 min walk to stop · Route 2 then Route 99 · ≈34 min to campus, 1 transfer')
+    expect(shortCommute(oneTransfer)).toBe('≈34 min by bus, 1 transfer')
+    expect(commuteMinutes(oneTransfer)).toBe(34)
+  })
 
   test('describeCommute', () => {
     expect(describeCommute(walk)).toBe('≈9 min walk to campus')

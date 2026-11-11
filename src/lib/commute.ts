@@ -10,17 +10,19 @@ const ALWAYS_WALK_MIN = 15
 /** Only stops within this many minutes' walk count as a way onto the bus. */
 const MAX_WALK_TO_STOP_MIN = 10
 
-export type Commute =
-  | { mode: 'walk'; minutes: number }
-  | {
+export type BusCommute = {
       mode: 'bus'
       minutes: number
       walkToStopMinutes: number
       stop: Stop
       route: Route
+      /** Ride time; with a transfer, ride plus the change. */
       rideMinutes: number
+      /** Present when the trip changes buses once; `route` is then the first bus. */
+      transfer?: { secondRoute: Route; stop: { id: string; name: string } }
     }
-  | { mode: 'transfer' }
+
+export type Commute = { mode: 'walk'; minutes: number } | BusCommute | { mode: 'transfer' }
 
 /** Great-circle distance in metres. */
 export function distanceMeters(a: LatLng, b: LatLng): number {
@@ -38,20 +40,9 @@ export function walkMinutes(meters: number): number {
   return Math.max(1, Math.ceil((meters * DETOUR_FACTOR) / WALK_M_PER_MIN))
 }
 
-export function nearestStop(
-  p: LatLng,
-  stops: Stop[],
-): { stop: Stop; meters: number } {
-  let best = { stop: stops[0], meters: Infinity }
-  for (const stop of stops) {
-    const meters = distanceMeters(p, stop)
-    if (meters < best.meters) best = { stop, meters }
-  }
-  return best
-}
-
 /** Stops that can reach the University Centre, found once (the default network never changes). */
-const hasRide = (s: Stop) => !s.campus && Object.keys(s.toCampus).length > 0
+const hasRide = (s: Stop) =>
+  !s.campus && (Object.keys(s.toCampus).length > 0 || s.viaTransfer !== undefined)
 const DEFAULT_CANDIDATES = STOPS.filter(hasRide)
 
 /**
@@ -68,13 +59,24 @@ export function campusCommute(
   const candidates = stops === STOPS ? DEFAULT_CANDIDATES : stops.filter(hasRide)
   const order = new Map(routes.map((r, i) => [r.id, i]))
   const byId = new Map(routes.map((r) => [r.id, r]))
-  let best: Extract<Commute, { mode: 'bus' }> | null = null
+  let best: BusCommute | null = null
   for (const stop of candidates) {
     const walkToStopMinutes = walkMinutes(distanceMeters(p, stop))
     if (walkToStopMinutes > MAX_WALK_TO_STOP_MIN) continue
+    const options: { route: Route; rideMinutes: number; transfer?: BusCommute['transfer'] }[] = []
     for (const [routeId, rideMinutes] of Object.entries(stop.toCampus)) {
       const route = byId.get(routeId)
-      if (!route) continue
+      if (route) options.push({ route, rideMinutes })
+    }
+    const via = stop.viaTransfer
+    if (via) {
+      const route = byId.get(via.firstRoute)
+      const secondRoute = byId.get(via.secondRoute)
+      if (route && secondRoute) {
+        options.push({ route, rideMinutes: via.minutes, transfer: { secondRoute, stop: via.transferStop } })
+      }
+    }
+    for (const { route, rideMinutes, transfer } of options) {
       const minutes = walkToStopMinutes + rideMinutes
       const better =
         !best ||
@@ -83,7 +85,9 @@ export function campusCommute(
           (walkToStopMinutes < best.walkToStopMinutes ||
             (walkToStopMinutes === best.walkToStopMinutes &&
               compareRoutes(route, best.route, order) < 0)))
-      if (better) best = { mode: 'bus', minutes, walkToStopMinutes, stop, route, rideMinutes }
+      if (better) {
+        best = { mode: 'bus', minutes, walkToStopMinutes, stop, route, rideMinutes, ...(transfer && { transfer }) }
+      }
     }
   }
   if (walk <= ALWAYS_WALK_MIN || (best && walk <= best.minutes)) {
@@ -106,11 +110,15 @@ export function commuteMinutes(c: Commute): number | null {
 export function describeCommute(c: Commute): string {
   if (c.mode === 'walk') return `≈${c.minutes} min walk to campus`
   if (c.mode === 'transfer') return 'Transfer needed'
-  return `≈${c.walkToStopMinutes} min walk to stop · Route ${c.route.shortName} · ≈${c.minutes} min to campus`
+  const routes = c.transfer
+    ? `Route ${c.route.shortName} then Route ${c.transfer.secondRoute.shortName}`
+    : `Route ${c.route.shortName}`
+  return `≈${c.walkToStopMinutes} min walk to stop · ${routes} · ≈${c.minutes} min to campus${c.transfer ? ', 1 transfer' : ''}`
 }
 
-/** Short form for cards: "≈9 min walk" / "≈18 min by bus" / "Transfer needed" */
+/** Short form for cards: "≈9 min walk" / "≈18 min by bus" / "≈34 min by bus, 1 transfer" / "Transfer needed" */
 export function shortCommute(c: Commute): string {
   if (c.mode === 'transfer') return 'Transfer needed'
-  return c.mode === 'walk' ? `≈${c.minutes} min walk` : `≈${c.minutes} min by bus`
+  if (c.mode === 'walk') return `≈${c.minutes} min walk`
+  return `≈${c.minutes} min by bus${c.transfer ? ', 1 transfer' : ''}`
 }

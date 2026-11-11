@@ -56,6 +56,16 @@ export interface Stop {
   toCampus: Record<string, number>
   /** True for the University Centre platforms themselves. */
   campus?: boolean
+  /** Best trip with one change of bus, present only when it beats every direct ride from this stop. */
+  viaTransfer?: ViaTransfer
+}
+
+export interface ViaTransfer {
+  /** Ride plus the change, in minutes. */
+  minutes: number
+  firstRoute: string
+  secondRoute: string
+  transferStop: { id: string; name: string }
 }
 
 export interface Route {

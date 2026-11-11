@@ -12,15 +12,28 @@ function useZoom(): number {
   return zoom
 }
 
+// Built once: react-leaflet resets a Polyline whenever its positions array changes identity.
+const ROUTE_LINES = ROUTES.map((r) => ({
+  route: r,
+  positions: r.paths.map((path) => path.map((p) => [p.lat, p.lng] as [number, number])),
+}))
+const ROUTE_NAME = new Map(ROUTES.map((r) => [r.id, r.shortName]))
+
+function stopLabel(s: { name: string; routes: string[] }): string {
+  const names = s.routes.map((id) => ROUTE_NAME.get(id) ?? id)
+  names.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+  return `${s.name} · Route${names.length === 1 ? '' : 's'} ${names.join(', ')}`
+}
+
 /** Guelph Transit routes as thin coloured lines, and stops as dots when zoomed in. */
 export default function TransitLayer({ highlightRoute }: { highlightRoute?: string }) {
   const zoom = useZoom()
   return (
     <>
-      {ROUTES.map((r) => (
+      {ROUTE_LINES.map(({ route: r, positions }) => (
         <Polyline
           key={r.id}
-          positions={r.paths.map((path) => path.map((p) => [p.lat, p.lng] as [number, number]))}
+          positions={positions}
           pathOptions={{
             color: r.color,
             weight: highlightRoute === r.id ? 5 : 3,
@@ -36,7 +49,7 @@ export default function TransitLayer({ highlightRoute }: { highlightRoute?: stri
             radius={4}
             pathOptions={{ color: '#1c2a35', weight: 2, fillColor: '#ffffff', fillOpacity: 1 }}
           >
-            <Tooltip>{s.name}</Tooltip>
+            <Tooltip>{stopLabel(s)}</Tooltip>
           </CircleMarker>
         ))}
     </>

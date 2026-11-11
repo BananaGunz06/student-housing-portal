@@ -10,6 +10,8 @@ const big = makeListing({ id: 'd', rent: 2500, type: 'house', bedrooms: 4 })
 const far = makeListing({ id: 'e', rent: 650, lat: 43.55124, lng: -80.26554 })
 // Outside the city, nowhere near a campus-bound stop.
 const stranded = makeListing({ id: 'f', rent: 600, lat: 43.45, lng: -80.4 })
+// Kitchener-side spot whose best trip changes buses once (Route 20 then Route 18).
+const changer = makeListing({ id: 'g', rent: 700, lat: 43.53968, lng: -80.27128 })
 const all = [pricey, big, cheap, mid, far]
 
 const ids = (budget: number, f = DEFAULT_FILTERS) =>
@@ -45,6 +47,17 @@ describe('applyFilters', () => {
       const got = applyFilters(evaluate([stranded, cheap], 5000), { ...DEFAULT_FILTERS, maxCommute })
       expect(got.map((r) => r.listing.id)).toEqual(['a'])
     }
+  })
+
+  test('a one-transfer commute counts with its minutes against the limit', () => {
+    const c = evaluate([changer], 5000)[0].commute
+    expect(c.mode === 'bus' && c.transfer).toBeTruthy()
+    const minutes = (c as { minutes: number }).minutes
+    const f = (maxCommute: number | null) =>
+      applyFilters(evaluate([changer], 5000), { ...DEFAULT_FILTERS, maxCommute }).length
+    expect(f(minutes)).toBe(1)
+    expect(f(minutes - 1)).toBe(0)
+    expect(f(null)).toBe(1)
   })
 
   test('a bus commute within the limit stays, beyond it goes', () => {

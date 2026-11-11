@@ -81,9 +81,10 @@ describe('real Guelph Transit network', () => {
     ).toBe(true)
   })
 
-  test('the listings include places that walk and places that take a bus', () => {
-    const modes = getAll().map((l) => campusCommute(l).mode)
-    expect(modes).toContain('bus')
+  test('some listings get a direct bus, some a one-transfer bus, and a spot next to campus walks', () => {
+    const commutes = getAll().map((l) => campusCommute(l))
+    expect(commutes.some((c) => c.mode === 'bus' && !c.transfer)).toBe(true)
+    expect(commutes.some((c) => c.mode === 'bus' && c.transfer)).toBe(true)
     const nearCampus = { lat: CAMPUS.lat + 0.002, lng: CAMPUS.lng }
     expect(campusCommute(nearCampus).mode).toBe('walk')
   })

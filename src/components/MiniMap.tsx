@@ -1,6 +1,7 @@
 import 'leaflet/dist/leaflet.css'
 import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip } from 'react-leaflet'
 import { CAMPUS } from '../data/campus'
+import { STOPS } from '../data/transit'
 import type { Listing } from '../data/types'
 import type { Commute } from '../lib/commute'
 import { campusIcon, homeIcon, TILE_ATTRIBUTION, TILE_URL } from './mapShared'
@@ -14,7 +15,13 @@ export default function MiniMap({ listing, commute }: { listing: Listing; commut
   const walkTo: Pt = commute.mode === 'bus' ? [commute.stop.lat, commute.stop.lng] : campus
   const walkMin =
     commute.mode === 'bus' ? commute.walkToStopMinutes : commute.mode === 'walk' ? commute.minutes : null
-  const bounds: Pt[] = commute.mode === 'transfer' ? [home, campus] : [home, walkTo, campus]
+  const transferStop =
+    commute.mode === 'bus' && commute.transfer
+      ? STOPS.find((s) => s.id === commute.transfer!.stop.id)
+      : undefined
+  const transferPt: Pt | null = transferStop ? [transferStop.lat, transferStop.lng] : null
+  const bounds: Pt[] =
+    commute.mode === 'transfer' ? [home, campus] : [home, walkTo, campus, ...(transferPt ? [transferPt] : [])]
 
   return (
     <MapContainer
@@ -25,11 +32,25 @@ export default function MiniMap({ listing, commute }: { listing: Listing; commut
       className="h-full w-full"
     >
       <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
-      {commute.mode === 'bus' && (
-        <Polyline
-          positions={commute.route.paths.map((path) => path.map((p) => [p.lat, p.lng] as Pt))}
-          pathOptions={{ color: commute.route.color, weight: 4, opacity: 0.5 }}
-        />
+      {commute.mode === 'bus' &&
+        [commute.route, commute.transfer?.secondRoute].map(
+          (r) =>
+            r && (
+              <Polyline
+                key={r.id}
+                positions={r.paths.map((path) => path.map((p) => [p.lat, p.lng] as Pt))}
+                pathOptions={{ color: r.color, weight: 4, opacity: 0.5 }}
+              />
+            ),
+        )}
+      {transferPt && (
+        <CircleMarker
+          center={transferPt}
+          radius={7}
+          pathOptions={{ color: '#1c2a35', weight: 3, fillColor: '#ffffff', fillOpacity: 1 }}
+        >
+          <Tooltip>Change buses: {commute.mode === 'bus' && commute.transfer?.stop.name}</Tooltip>
+        </CircleMarker>
       )}
       {commute.mode !== 'transfer' && (
         <Polyline

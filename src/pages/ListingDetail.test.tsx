@@ -46,6 +46,16 @@ describe('Listing detail', () => {
     expect(screen.getByText(describeCommute(campusCommute(bus)))).toBeInTheDocument()
   })
 
+  test('describes a one-transfer bus commute', () => {
+    const l = getAll().find((x) => {
+      const c = campusCommute(x)
+      return c.mode === 'bus' && c.transfer
+    })!
+    setBudget(5000)
+    renderApp(`/listing/${l.id}`)
+    expect(screen.getByText(/Route \S+( \S)? then Route \S+( \S)? · ≈\d+ min to campus, 1 transfer$/)).toBeInTheDocument()
+  })
+
   test('says so when a transfer is needed', () => {
     const transfer = getAll().find((l) => campusCommute(l).mode === 'transfer')!
     setBudget(5000)

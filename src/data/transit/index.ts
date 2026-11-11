@@ -1,4 +1,4 @@
-import type { Route, Stop } from '../types'
+import type { Route, Stop, ViaTransfer } from '../types'
 import metaRaw from './meta.json'
 import routesRaw from './routes.geojson?raw'
 import stopsRaw from './stops.geojson?raw'
@@ -10,6 +10,7 @@ interface PointFeature {
     routes: string[]
     toCampus: Record<string, number>
     campus?: boolean
+    viaTransfer?: ViaTransfer
   }
   geometry: { coordinates: [number, number] }
 }
