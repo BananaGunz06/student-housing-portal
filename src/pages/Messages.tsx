@@ -38,7 +38,7 @@ export default function Messages() {
           {list.map(({ listingId, last, messages: ms }) => {
             const l = getById(listingId)!
             return (
-              <li key={listingId}>
+              <li key={listingId} className="min-w-0">
                 <Link
                   to={`/messages/${listingId}`}
                   className="flex gap-3 rounded-2xl border border-line bg-card p-3 hover:border-ink"

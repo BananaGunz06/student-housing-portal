@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
 import { getAll } from '../lib/listingsRepo'
 import { greetingName } from '../lib/messages'
@@ -56,6 +56,7 @@ describe('Messaging a poster', () => {
     expect(within(dialog).getByText('Write a message to send.')).toBeInTheDocument()
     expect(within(dialog).getByText('Enter a 10-digit phone number, or leave it blank.')).toBeInTheDocument()
     expect(within(dialog).getByLabelText('Your message')).toHaveAttribute('aria-invalid', 'true')
+    await waitFor(() => expect(body).toHaveFocus())
 
     await user.type(body, 'Is it still free in January?')
     await user.clear(within(dialog).getByLabelText('Phone'))
@@ -65,6 +66,8 @@ describe('Messaging a poster', () => {
 
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.getByRole('status')).toHaveTextContent('Saved to Messages')
+    await user.click(screen.getByRole('button', { name: 'Dismiss' }))
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
     expect(screen.getByText(new RegExp(`^You messaged ${first} on`))).toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: 'Messages' }))

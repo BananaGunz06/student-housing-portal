@@ -77,7 +77,11 @@ export default function MessageSheet({
     e.preventDefault()
     const errs = validateDraft(d)
     setErrors(errs)
-    if (Object.keys(errs).length) return
+    if (Object.keys(errs).length) {
+      // Take the student to the first thing to fix.
+      requestAnimationFrame(() => dialogRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
+      return
+    }
     sendMessage(listing.id, d.body, sharedFrom(d))
     onSent()
     onClose()

@@ -10,6 +10,10 @@ Version 1 is a portfolio piece and an idea test. It runs entirely in the browser
 |---|---|---|---|---|
 | ![Welcome screen asking for a monthly budget](docs/screenshots/welcome.png) | ![Results with fit badges and budget meters](docs/screenshots/results.png) | ![Cost breakdown and walk-to-stop map](docs/screenshots/detail-map.png) | ![Map with price pins and bus routes](docs/screenshots/map.png) | ![Two saved places compared](docs/screenshots/compare.png) |
 
+| Posted by | Message the poster | Conversation |
+|---|---|---|
+| ![Posted by card with a Message button for a poster who keeps their number private](docs/screenshots/posted-by.png) | ![Message form with optional details to share](docs/screenshots/message-sheet.png) | ![A sent message showing exactly what was shared](docs/screenshots/conversation.png) |
+
 ![Results on a laptop](docs/screenshots/laptop-results.png)
 
 ## What it does
@@ -20,6 +24,8 @@ Version 1 is a portfolio piece and an idea test. It runs entirely in the browser
 - **Map.** A price on every pin, coloured and marked by fit. Bus routes as lines, stops as dots, campus marked. Tap a pin for a preview.
 - **Listing detail.** The cost breakdown, how much of your budget is left, what's included, and lease details. A mini-map shows the nearest stop with a dashed walking line: "≈6 min walk to stop · Route 20 · ≈22 min to campus".
 - **Saved + Compare.** Save places, then compare 2 or 3 side by side.
+- **Contact the poster in the app.** Every listing shows who posted it (landlord, property manager or a student subletting) and how fast they usually reply. Anyone can be messaged in the app, so posters don't have to put a phone number or email online. Call, text and email links appear only for posters who chose to share them.
+- **Students share only what they want.** The message form starts with an editable note ("Hi Sam, is the room on Dean Ave still available…") and optional name, phone, email and "anything else". Only filled-in details go with the message, and each sent message shows exactly what was shared. The Messages tab keeps every conversation, with follow-ups.
 
 ## Run it
 
@@ -43,6 +49,8 @@ Everything here is **sample data for a demo**:
 
 - **Listings** are 40 fictional places, priced to look like the Guelph student market. `scripts/generate-listings.mjs` generates them from a fixed seed into `src/data/listings.json`.
 - **Bus routes and stops are hand-made and approximate.** The plan was to convert Guelph Transit's public GTFS feed, but the city's data hosts weren't reachable from the build environment. So `scripts/build-sample-transit.mjs` draws 4 sample routes and 26 stops through the campus loop instead. They are **not** the real Guelph Transit network or schedule. To use the real network, convert the GTFS `stops.txt` and `shapes.txt` into the same two GeoJSON files in `src/data/transit/`.
+- **Posters are fictional.** Names are made up, phone numbers use the reserved 555-01xx range and emails use `example.com`. About a third of posters share no phone or email, so messaging in the app is their only contact.
+- **Messaging is a demo.** Messages are saved in your browser only and aren't sent to anyone, and posters can't reply yet. The app says so on the message form and the Messages tab. Making it real needs a server that stores and delivers messages and gives posters an inbox; `AppState.sendMessage` and `listingsRepo` are where that would plug in.
 - **Photos are generated illustrations**, not real photos (`src/components/ListingArt.tsx`).
 - **Bus pass is $0 a month.** U of G undergraduates pay the Universal Bus Pass (UPass) through their student fees. Change `transitMonthly` in `src/data/campus.ts` for other campuses.
 - **Commute times are estimates**, marked "≈":
@@ -65,15 +73,18 @@ src/
     cost.ts           trueMonthlyCost, fitStatus (Fits / Stretch / Over), money formatting
     commute.ts        distance, walk minutes, nearest stop, campus commute estimate
     filters.ts        evaluate listings for a budget, filter + sort, nearest budget with results
+    messages.ts       message validation, what gets shared, starter text, conversations
+    useModal.ts       shared bottom-sheet behaviour (focus trap, Escape, scroll lock)
     storage.ts        localStorage hook that keeps working when storage is blocked
-  state/AppState.tsx  budget, filters and saved places, remembered in the browser
+  state/AppState.tsx  budget, filters, saved places and sent messages, remembered in the browser
   components/    BudgetInput, ListingCard, FitBadge, BudgetMeter, CostBreakdown, FilterSheet,
-                 MapView, pricePin, TransitLayer, MiniMap, CompareTable, BottomNav, ListingArt
-  pages/         Welcome, Results, ListingDetail, Saved, Compare, NotFound
+                 MapView, pricePin, TransitLayer, MiniMap, CompareTable, BottomNav, ListingArt,
+                 PosterCard, MessageSheet
+  pages/         Welcome, Results, ListingDetail, Saved, Compare, Messages, Conversation, NotFound
 ```
 
 The maths in `src/lib` is plain TypeScript with no React, unit-tested directly, and shared by the list, map, detail and compare screens. The map code loads only when you open a map, so the list stays light.
 
 ## Not in version 1
 
-Accounts, landlord posting, messaging, roommate matching, rent splitting, scam warnings and real listings. The design spec is in `docs/superpowers/specs/` and the build plan is in `docs/superpowers/plans/`.
+Accounts, landlord posting, real message delivery and poster replies, roommate matching, rent splitting, scam warnings and real listings. The design spec is in `docs/superpowers/specs/` and the build plan is in `docs/superpowers/plans/`.

@@ -69,16 +69,6 @@ export default function ListingDetail() {
 
         <Section title="Posted by">
           <PosterCard listing={l} onMessage={() => setMessaging(true)} />
-          <div role="status" className="empty:hidden mt-3 rounded-xl border-2 border-fits bg-card px-3 py-2">
-            {sentNote && (
-              <>
-                Saved to Messages.{' '}
-                <Link to={`/messages/${l.id}`} className="font-bold underline">
-                  Open conversation
-                </Link>
-              </>
-            )}
-          </div>
         </Section>
 
         <Section title="Getting to campus">
@@ -138,6 +128,30 @@ export default function ListingDetail() {
             </button>
           </div>
         </div>
+      </div>
+
+      <div
+        role="status"
+        className="fixed inset-x-0 bottom-[calc(7.75rem+env(safe-area-inset-bottom))] z-[1060] flex justify-center px-4 empty:hidden"
+      >
+        {sentNote && (
+          <p className="flex max-w-md items-center gap-3 rounded-2xl bg-fits px-4 py-2 text-white shadow-lg">
+            <span>
+              Saved to Messages.{' '}
+              <Link to={`/messages/${l.id}`} className="font-bold underline">
+                Open conversation
+              </Link>
+            </span>
+            <button
+              type="button"
+              onClick={() => setSentNote(false)}
+              className="-mr-2 min-h-11 min-w-11 rounded-full font-bold"
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </p>
+        )}
       </div>
 
       {messaging && (
