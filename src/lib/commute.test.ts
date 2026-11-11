@@ -84,22 +84,25 @@ describe('campusCommute (synthetic network)', () => {
     expect(second.mode === 'bus' && second.route.shortName).toBe('2')
   })
 
-  test('stops more than a 10 minute walk away do not count', () => {
-    // 0.0055 degrees is about 610 m: 10 min; 0.0065 is about 720 m: 12 min.
-    const ok = campusCommute(HOME, [stopAt('ten', 0.0055, { r1: 5 })], [R1], FAR_CAMPUS)
-    expect(ok.mode).toBe('bus')
-    const tooFar = campusCommute(HOME, [stopAt('twelve', 0.0065, { r1: 5 })], [R1], FAR_CAMPUS)
-    expect(tooFar).toEqual({ mode: 'transfer' })
+  test('stops up to a 15 minute walk away count; further ones do not', () => {
+    // 0.0065 degrees is about 720 m: 12 min; 0.0095 is about 1055 m: 18 min.
+    const twelve = campusCommute(HOME, [stopAt('twelve', 0.0065, { r1: 5 })], [R1], FAR_CAMPUS)
+    expect(twelve).toMatchObject({ mode: 'bus', walkToStopMinutes: 12, minutes: 17 })
+    const edge = campusCommute(HOME, [stopAt('fifteen', 0.0083, { r1: 5 })], [R1], FAR_CAMPUS)
+    expect(edge.mode).toBe('bus')
+    const tooFar = campusCommute(HOME, [stopAt('eighteen', 0.0095, { r1: 5 })], [R1], FAR_CAMPUS)
+    expect(tooFar.mode).toBe('walk')
+    expect(tooFar).toHaveProperty('noBusNearby', true)
   })
 
-  test('a stop that does not reach campus (no toCampus) is ignored', () => {
+  test('a stop that does not reach campus (no toCampus) is ignored: walk, no bus nearby', () => {
     const c = campusCommute(HOME, [stopAt('dead-end', 0.001, {})], [R1], FAR_CAMPUS)
-    expect(c).toEqual({ mode: 'transfer' })
+    expect(c).toEqual({ mode: 'walk', minutes: walkMinutes(distanceMeters(HOME, FAR_CAMPUS)), noBusNearby: true })
   })
 
   test('campus platforms are never boarding stops', () => {
     const platform: Stop = { ...stopAt('uc', 0.001, { r1: 0 }), campus: true }
-    expect(campusCommute(HOME, [platform], [R1], FAR_CAMPUS)).toEqual({ mode: 'transfer' })
+    expect(campusCommute(HOME, [platform], [R1], FAR_CAMPUS)).toMatchObject({ mode: 'walk', noBusNearby: true })
   })
 
   test('walks when walking is no slower than the bus', () => {
@@ -156,7 +159,7 @@ describe('campusCommute with one transfer (synthetic network)', () => {
   })
 
   test('a transfer stop out of walking range is not used', () => {
-    expect(campusCommute(HOME, [viaStop('v', 0.0065, VIA)], [R2, R99], FAR_CAMPUS)).toEqual({ mode: 'transfer' })
+    expect(campusCommute(HOME, [viaStop('v', 0.0095, VIA)], [R2, R99], FAR_CAMPUS)).toMatchObject({ mode: 'walk', noBusNearby: true })
   })
 })
 
@@ -185,8 +188,12 @@ describe('campusCommute (real Guelph Transit network)', () => {
     expect(c.stop.routes).toContain(c.route.id)
   })
 
-  test('a spot far from any campus-bound stop needs a transfer', () => {
-    expect(campusCommute({ lat: 43.45, lng: -80.4 })).toEqual({ mode: 'transfer' })
+  test('a spot far from any campus-bound stop walks, flagged as no bus nearby', () => {
+    const c = campusCommute({ lat: 43.45, lng: -80.4 })
+    expect(c.mode).toBe('walk')
+    expect(c).toHaveProperty('noBusNearby', true)
+    expect(describeCommute(c)).toMatch(/^≈\d+ min walk to campus \(no bus nearby\)$/)
+    expect(shortCommute(c)).toMatch(/^≈\d+ min walk$/)
   })
 })
 
@@ -200,7 +207,7 @@ describe('commute text', () => {
     route: R99,
   }
   const walk: Commute = { mode: 'walk', minutes: 9 }
-  const transfer: Commute = { mode: 'transfer' }
+  const noBus: Commute = { mode: 'walk', minutes: 40, noBusNearby: true }
 
   const oneTransfer: Commute = {
     ...(bus as Extract<Commute, { mode: 'bus' }>),
@@ -218,16 +225,16 @@ describe('commute text', () => {
   test('describeCommute', () => {
     expect(describeCommute(walk)).toBe('≈9 min walk to campus')
     expect(describeCommute(bus)).toBe('≈6 min walk to stop · Route 99 · ≈20 min to campus')
-    expect(describeCommute(transfer)).toBe('Transfer needed')
+    expect(describeCommute(noBus)).toBe('≈40 min walk to campus (no bus nearby)')
   })
   test('shortCommute', () => {
     expect(shortCommute(walk)).toBe('≈9 min walk')
     expect(shortCommute(bus)).toBe('≈20 min by bus')
-    expect(shortCommute(transfer)).toBe('Transfer needed')
+    expect(shortCommute(noBus)).toBe('≈40 min walk')
   })
-  test('commuteMinutes is null for a transfer', () => {
+  test('commuteMinutes is the door-to-campus time', () => {
     expect(commuteMinutes(walk)).toBe(9)
     expect(commuteMinutes(bus)).toBe(20)
-    expect(commuteMinutes(transfer)).toBeNull()
+    expect(commuteMinutes(noBus)).toBe(40)
   })
 })

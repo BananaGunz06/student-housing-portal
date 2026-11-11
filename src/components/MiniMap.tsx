@@ -14,14 +14,13 @@ export default function MiniMap({ listing, commute }: { listing: Listing; commut
   const campus: Pt = [CAMPUS.lat, CAMPUS.lng]
   const walkTo: Pt = commute.mode === 'bus' ? [commute.stop.lat, commute.stop.lng] : campus
   const walkMin =
-    commute.mode === 'bus' ? commute.walkToStopMinutes : commute.mode === 'walk' ? commute.minutes : null
+    commute.mode === 'bus' ? commute.walkToStopMinutes : commute.minutes
   const transferStop =
     commute.mode === 'bus' && commute.transfer
       ? STOPS.find((s) => s.id === commute.transfer!.stop.id)
       : undefined
   const transferPt: Pt | null = transferStop ? [transferStop.lat, transferStop.lng] : null
-  const bounds: Pt[] =
-    commute.mode === 'transfer' ? [home, campus] : [home, walkTo, campus, ...(transferPt ? [transferPt] : [])]
+  const bounds: Pt[] = [home, walkTo, campus, ...(transferPt ? [transferPt] : [])]
 
   return (
     <MapContainer
@@ -52,16 +51,14 @@ export default function MiniMap({ listing, commute }: { listing: Listing; commut
           <Tooltip>Change buses: {commute.mode === 'bus' && commute.transfer?.stop.name}</Tooltip>
         </CircleMarker>
       )}
-      {commute.mode !== 'transfer' && (
-        <Polyline
-          positions={[home, walkTo]}
-          pathOptions={{ color: '#1c2a35', weight: 4, dashArray: '2 9', lineCap: 'round' }}
-        >
-          <Tooltip permanent direction="center">
-            ≈{walkMin} min walk
-          </Tooltip>
-        </Polyline>
-      )}
+      <Polyline
+        positions={[home, walkTo]}
+        pathOptions={{ color: '#1c2a35', weight: 4, dashArray: '2 9', lineCap: 'round' }}
+      >
+        <Tooltip permanent direction="center">
+          ≈{walkMin} min walk
+        </Tooltip>
+      </Polyline>
       {commute.mode === 'bus' && (
         <CircleMarker
           center={walkTo}

@@ -8,7 +8,7 @@ const WALK_M_PER_MIN = 80
 /** Under this many minutes, walking is the obvious choice. */
 const ALWAYS_WALK_MIN = 15
 /** Only stops within this many minutes' walk count as a way onto the bus. */
-const MAX_WALK_TO_STOP_MIN = 10
+const MAX_WALK_TO_STOP_MIN = 15
 
 export type BusCommute = {
       mode: 'bus'
@@ -22,7 +22,10 @@ export type BusCommute = {
       transfer?: { secondRoute: Route; stop: { id: string; name: string } }
     }
 
-export type Commute = { mode: 'walk'; minutes: number } | BusCommute | { mode: 'transfer' }
+export type Commute =
+  /** `noBusNearby`: no stop within walking range has a ride to campus, so walking is the only estimate. */
+  | { mode: 'walk'; minutes: number; noBusNearby?: true }
+  | BusCommute
 
 /** Great-circle distance in metres. */
 export function distanceMeters(a: LatLng, b: LatLng): number {
@@ -46,7 +49,7 @@ const hasRide = (s: Stop) =>
 const DEFAULT_CANDIDATES = STOPS.filter(hasRide)
 
 /**
- * Estimated door-to-campus commute: walk, or walk to a stop within 10 minutes
+ * Estimated door-to-campus commute: walk, or walk to a stop within 15 minutes
  * and ride its scheduled time. "transfer" means no direct bus is close enough.
  */
 export function campusCommute(
@@ -90,10 +93,9 @@ export function campusCommute(
       }
     }
   }
-  if (walk <= ALWAYS_WALK_MIN || (best && walk <= best.minutes)) {
-    return { mode: 'walk', minutes: walk }
-  }
-  return best ?? { mode: 'transfer' }
+  if (!best) return { mode: 'walk', minutes: walk, noBusNearby: true }
+  if (walk <= ALWAYS_WALK_MIN || walk <= best.minutes) return { mode: 'walk', minutes: walk }
+  return best
 }
 
 function compareRoutes(a: Route, b: Route, order: Map<string, number>): number {
@@ -101,24 +103,22 @@ function compareRoutes(a: Route, b: Route, order: Map<string, number>): number {
     (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0)
 }
 
-/** Door-to-campus minutes, or null when a transfer is needed. */
-export function commuteMinutes(c: Commute): number | null {
-  return c.mode === 'transfer' ? null : c.minutes
+/** Door-to-campus minutes. */
+export function commuteMinutes(c: Commute): number {
+  return c.minutes
 }
 
 /** "≈4 min walk to stop · Route 99 · ≈12 min to campus" */
 export function describeCommute(c: Commute): string {
-  if (c.mode === 'walk') return `≈${c.minutes} min walk to campus`
-  if (c.mode === 'transfer') return 'Transfer needed'
+  if (c.mode === 'walk') return `≈${c.minutes} min walk to campus${c.noBusNearby ? ' (no bus nearby)' : ''}`
   const routes = c.transfer
     ? `Route ${c.route.shortName} then Route ${c.transfer.secondRoute.shortName}`
     : `Route ${c.route.shortName}`
   return `≈${c.walkToStopMinutes} min walk to stop · ${routes} · ≈${c.minutes} min to campus${c.transfer ? ', 1 transfer' : ''}`
 }
 
-/** Short form for cards: "≈9 min walk" / "≈18 min by bus" / "≈34 min by bus, 1 transfer" / "Transfer needed" */
+/** Short form for cards: "≈9 min walk" / "≈18 min by bus" / "≈34 min by bus, 1 transfer" */
 export function shortCommute(c: Commute): string {
-  if (c.mode === 'transfer') return 'Transfer needed'
   if (c.mode === 'walk') return `≈${c.minutes} min walk`
   return `≈${c.minutes} min by bus${c.transfer ? ', 1 transfer' : ''}`
 }

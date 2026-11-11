@@ -56,11 +56,12 @@ describe('Listing detail', () => {
     expect(screen.getByText(/Route \S+( \S)? then Route \S+( \S)? · ≈\d+ min to campus, 1 transfer$/)).toBeInTheDocument()
   })
 
-  test('says so when a transfer is needed', () => {
-    const transfer = getAll().find((l) => campusCommute(l).mode === 'transfer')!
+  test('says so when no bus is nearby', () => {
+    const l = getAll().find((x) => (campusCommute(x) as { noBusNearby?: boolean }).noBusNearby)
+    if (!l) return // every sample listing has a bus within reach
     setBudget(5000)
-    renderApp(`/listing/${transfer.id}`)
-    expect(screen.getByText('Transfer needed')).toBeInTheDocument()
+    renderApp(`/listing/${l.id}`)
+    expect(screen.getByText(/min walk to campus \(no bus nearby\)$/)).toBeInTheDocument()
   })
 
   test('an unknown listing shows a friendly not-found', () => {

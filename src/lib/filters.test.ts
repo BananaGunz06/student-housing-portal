@@ -33,20 +33,18 @@ describe('applyFilters', () => {
     expect(r.commute.mode).toBe('walk')
   })
 
-  test('far places take the bus; stranded ones need a transfer', () => {
+  test('far places take the bus; stranded ones walk with no bus nearby', () => {
     expect(evaluate([far], 5000)[0].commute.mode).toBe('bus')
-    expect(evaluate([stranded], 5000)[0].commute.mode).toBe('transfer')
+    expect(evaluate([stranded], 5000)[0].commute).toMatchObject({ mode: 'walk', noBusNearby: true })
   })
 
-  test('transfer places show with no commute limit', () => {
-    expect(applyFilters(evaluate([stranded, cheap], 5000), DEFAULT_FILTERS).map((r) => r.listing.id)).toEqual(['f', 'a'])
-  })
-
-  test('any commute limit excludes transfer places, even a generous one', () => {
-    for (const maxCommute of [10, 15, 20, 30, 45]) {
-      const got = applyFilters(evaluate([stranded, cheap], 5000), { ...DEFAULT_FILTERS, maxCommute })
-      expect(got.map((r) => r.listing.id)).toEqual(['a'])
-    }
+  test('no-bus-nearby places count with their walking minutes', () => {
+    const minutes = evaluate([stranded], 5000)[0].commute.minutes
+    const f = (maxCommute: number | null) =>
+      applyFilters(evaluate([stranded], 5000), { ...DEFAULT_FILTERS, maxCommute }).length
+    expect(f(null)).toBe(1)
+    expect(f(minutes)).toBe(1)
+    expect(f(minutes - 1)).toBe(0)
   })
 
   test('a one-transfer commute counts with its minutes against the limit', () => {

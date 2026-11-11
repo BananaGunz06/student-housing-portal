@@ -14,13 +14,13 @@
 
 - Feed URL `https://files.mobilitydatabase.org/mdb-3140/latest.zip`; excluded routes `BREW`, `ZehrsGS`, `HMidGCS`, `HMidUC`; campus stops = names starting "University Centre"; ride-time window 7:00–10:00 arrivals at the University Centre, weekday service, median rounded up.
 - Simplification tolerance ≈ 10 m; generated GeoJSON total < 250 KB.
-- Bus option only for stops within a 10-minute walk; walk-only rule unchanged (≤ 15 min or no slower than bus).
-- Copy (exact): "Transfer needed"; map notice "Bus routes: Guelph Transit, Winter 2026 schedule" (label from meta.json); attribution "Transit data: City of Guelph"; welcome "Your budget stays on this device unless you sign in."
+- Bus option only for stops within a 15-minute walk; walk-only rule unchanged (≤ 15 min or no slower than bus); with no candidate stop the commute is a walk flagged `noBusNearby` (≤ 15 min or no slower than bus).
+- Copy (exact): "≈N min walk to campus (no bus nearby)"; map notice "Bus routes: Guelph Transit, Winter 2026 schedule" (label from meta.json); attribution "Transit data: City of Guelph"; welcome "Your budget stays on this device unless you sign in."
 - Tests never touch the network (the script's download is not exercised in tests).
 
 ## Review Focus
 
-- A listing right next to campus → walk, never "Transfer needed".
+- A listing right next to campus → walk, never a bus or "no bus nearby".
 - A stop served only in the direction away from campus → must not get a ride time (stop must come before the University Centre in the trip).
 - A route whose trips loop through the University Centre twice → use the first University Centre arrival after the stop.
 - "Longest commute" filter with a transfer listing → excluded under any limit; shown when the filter is "Any".
@@ -45,7 +45,7 @@
 
 **Files:** `src/data/types.ts` (Route: `shortName`, `longName`, `paths: LatLng[][]`; Stop: `toCampus`, `campus?`), `src/data/transit/index.ts`, `src/data/campus.ts` (campus point = University Centre loop centre), `src/lib/commute.ts` (+ tests), `src/lib/filters.ts` (transfer vs maxCommute, + tests), `src/components/TransitLayer.tsx`, `MapView.tsx`, `MiniMap.tsx`, `ListingCard.tsx`, `CompareTable.tsx`, `src/pages/ListingDetail.tsx`, affected tests.
 
-**Interfaces:** `Commute = {mode:'walk'; minutes} | {mode:'bus'; minutes; walkToStopMinutes; stop; route; rideMinutes} | {mode:'transfer'}`; `describeCommute` → "≈6 min walk to stop · Route 99 · ≈14 min to campus" / "Transfer needed"; `shortCommute` → "≈14 min by bus" / "Transfer needed".
+**Interfaces:** `Commute = {mode:'walk'; minutes} | {mode:'bus'; minutes; walkToStopMinutes; stop; route; rideMinutes} (walk gains optional `noBusNearby`)`; `describeCommute` → "≈6 min walk to stop · Route 99 · ≈14 min to campus" / "≈N min walk to campus (no bus nearby)"; `shortCommute` → "≈14 min by bus" / "≈N min walk".
 
 - [ ] Tests first: commute walk / direct bus / nearest-of-several / transfer / next-to-campus; filters with transfer.
 - [ ] Implement; stops layer only at zoom ≥ 15; mini-map draws the chosen route's paths and the walk line.

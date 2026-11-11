@@ -16,14 +16,12 @@ describe('MiniMap', () => {
     expect(container.querySelectorAll('path.leaflet-interactive').length).toBeGreaterThanOrEqual(5)
   })
 
-  test('a direct trip and a no-bus trip render', () => {
-    for (const pred of [
-      (c: ReturnType<typeof campusCommute>) => c.mode === 'bus' && !c.transfer,
-      (c: ReturnType<typeof campusCommute>) => c.mode === 'transfer',
-    ]) {
-      const l = withMode(pred)
-      const { container } = render(<MiniMap listing={l} commute={campusCommute(l)} />)
-      expect(container.querySelector('.leaflet-container')).not.toBeNull()
-    }
+  test('a direct trip and a no-bus walk render', () => {
+    const l = withMode((c) => c.mode === 'bus' && !c.transfer)
+    expect(render(<MiniMap listing={l} commute={campusCommute(l)} />).container.querySelector('.leaflet-container')).not.toBeNull()
+    const home = { ...l, lat: 43.45, lng: -80.4 }
+    const noBus = campusCommute(home)
+    expect(noBus).toMatchObject({ mode: 'walk', noBusNearby: true })
+    expect(render(<MiniMap listing={home} commute={noBus} />).container.querySelector('.leaflet-container')).not.toBeNull()
   })
 })

@@ -61,9 +61,7 @@ function matchesNonBudget(r: ListingResult, f: Filters): boolean {
   if (f.types.length > 0 && !f.types.includes(l.type)) return false
   if (f.furnishedOnly && !l.furnished) return false
   if (f.maxCommute !== null) {
-    // A transfer has no time we can promise, so any limit rules it out.
-    const minutes = commuteMinutes(r.commute)
-    if (minutes === null || minutes > f.maxCommute) return false
+    if (commuteMinutes(r.commute) > f.maxCommute) return false
   }
   if (f.moveIn && l.availableFrom > f.moveIn) return false
   return true
