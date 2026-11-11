@@ -5,6 +5,7 @@ import { AppRoutes } from '../App'
 import type { Backend } from '../lib/backend/types'
 import { AccountProvider } from '../state/AccountState'
 import { AppStateProvider } from '../state/AppState'
+import { CloudSync } from '../state/CloudSync'
 import { createFakeBackend } from './fakeBackend'
 
 /** Render the whole app at a URL, with a fresh userEvent. */
@@ -21,6 +22,7 @@ export function renderApp(url = '/', opts: { backend?: Backend; signedInAs?: str
     <MemoryRouter initialEntries={[url]}>
       <AccountProvider backend={backend}>
         <AppStateProvider>
+          <CloudSync />
           <AppRoutes />
         </AppStateProvider>
       </AccountProvider>

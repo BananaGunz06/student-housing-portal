@@ -11,6 +11,7 @@ import Welcome from './pages/Welcome'
 import { defaultBackend } from './lib/backend'
 import { AccountProvider } from './state/AccountState'
 import { AppStateProvider, useAppState } from './state/AppState'
+import { CloudSync } from './state/CloudSync'
 
 function Home() {
   const { budget } = useAppState()
@@ -57,6 +58,7 @@ export default function App() {
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <AccountProvider backend={defaultBackend}>
         <AppStateProvider>
+          <CloudSync />
           <AppRoutes />
         </AppStateProvider>
       </AccountProvider>

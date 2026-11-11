@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react'
+import type { CloudState } from '../lib/backend/types'
 import { clampBudget } from '../lib/cost'
 import { DEFAULT_FILTERS, type Filters } from '../lib/filters'
 import { getById } from '../lib/listingsRepo'
@@ -21,6 +22,12 @@ export interface AppState {
   sendMessage: (listingId: string, body: string, shared: SharedDetails) => void
   /** What the student shared most recently, to prefill the next message. */
   lastShared: SharedDetails
+  /** Budget, filters, saved places and messages as the account would keep them. */
+  deviceState: CloudState
+  /** Take everything from a cloud state (keeping anything added a moment ago); a null budget or filters keeps this device's. */
+  replaceAll: (s: CloudState) => void
+  /** Forget saved places and messages (on sign out); keeps budget and filters. */
+  clearPersonal: () => void
 }
 
 const Ctx = createContext<AppState | null>(null)
@@ -75,6 +82,41 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [setSavedRaw],
   )
 
+  const deviceState = useMemo<CloudState>(
+    () => ({ budget: typeof budget === 'number' ? budget : null, filters, savedIds, messages }),
+    [budget, filters, savedIds, messages],
+  )
+  const latest = useRef(deviceState)
+  useEffect(() => {
+    latest.current = deviceState
+  })
+  const replaceAll = useCallback(
+    (s: CloudState) => {
+      const cur = latest.current
+      if (s.budget !== null && s.budget !== cur.budget) setBudgetRaw(s.budget)
+      if (s.filters && JSON.stringify(s.filters) !== JSON.stringify(cur.filters)) setFilters(s.filters)
+      // Anything added since `s` was worked out (a save made while the account loaded) is kept.
+      if (JSON.stringify(s.savedIds) !== JSON.stringify(cur.savedIds)) {
+        setSavedRaw((prev) => {
+          const old = (Array.isArray(prev) ? prev : []).filter((x) => getById(x))
+          return [...s.savedIds, ...old.filter((x) => !s.savedIds.includes(x))]
+        })
+      }
+      if (JSON.stringify(s.messages) !== JSON.stringify(cur.messages)) {
+        setMessages((prev) => {
+          const old = (Array.isArray(prev) ? prev : []).filter(isMessage)
+          const ids = new Set(s.messages.map((m) => m.id))
+          return [...s.messages, ...old.filter((m) => !ids.has(m.id))]
+        })
+      }
+    },
+    [setBudgetRaw, setFilters, setSavedRaw, setMessages],
+  )
+  const clearPersonal = useCallback(() => {
+    setSavedRaw([])
+    setMessages([])
+  }, [setSavedRaw, setMessages])
+
   const value = useMemo(
     () => ({
       budget: typeof budget === 'number' ? budget : null,
@@ -88,8 +130,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       messages,
       sendMessage,
       lastShared,
+      deviceState,
+      replaceAll,
+      clearPersonal,
     }),
-    [budget, setBudget, filters, setFilters, savedIds, isSaved, toggleSaved, setSaved, messages, sendMessage, lastShared],
+    [budget, setBudget, filters, setFilters, savedIds, isSaved, toggleSaved, setSaved, messages, sendMessage, lastShared, deviceState, replaceAll, clearPersonal],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

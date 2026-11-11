@@ -17,6 +17,10 @@ export interface AccountApi {
   /** Run `then` now if signed in; otherwise ask the student to sign in first, then run it. */
   requireAccount(reason: AccountReason, then: () => void): void
   syncStatus: SyncStatus
+  /** Used by the cloud sync to report progress. */
+  setSyncStatus(s: SyncStatus): void
+  /** The backend this provider talks to (for the cloud sync). */
+  backend: Backend
 }
 
 interface Pending {
@@ -31,6 +35,7 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
   const [loaded, setLoaded] = useState(false)
   const [loadedProfile, setLoadedProfile] = useState<{ userId: string; profile: Profile } | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle')
   const signedIn = session !== null
 
   useEffect(() => {
@@ -107,9 +112,11 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
         if (userId) setLoadedProfile({ userId, profile: p })
       },
       requireAccount,
-      syncStatus: 'idle',
+      syncStatus,
+      setSyncStatus,
+      backend,
     }),
-    [backend, loaded, signedIn, session, profile, userId, requireAccount],
+    [backend, loaded, signedIn, session, profile, userId, requireAccount, syncStatus],
   )
 
   return (
