@@ -51,6 +51,18 @@ describe('laptop split view', () => {
     expect(screen.getByRole('complementary', { name: 'Filters' })).toBeInTheDocument()
   })
 
+  test('the laptop frame is a viewport-high column with a constrained row and a details panel above the list', async () => {
+    renderApp(`/results?listing=${first.id}`)
+    await screen.findByTestId('map')
+    const frame = screen.getByTestId('results-frame')
+    expect(frame).toHaveClass('flex', 'flex-col')
+    expect(frame.className).not.toContain('5.25rem')
+    const split = frame.querySelector('.grid')!
+    expect(split).toHaveClass('flex-1', 'min-h-0', 'grid-rows-[minmax(0,1fr)]')
+    const panel = screen.getByRole('button', { name: 'Back to list' }).closest('.absolute')!
+    expect(panel).toHaveClass('z-20')
+  })
+
   test('hovering or focusing a card tells the map which pin to raise', async () => {
     const { user } = renderApp('/results')
     const map = await screen.findByTestId('map')
@@ -190,6 +202,12 @@ describe('phones and tablets', () => {
     await user.click(cardLink(first.title))
     expect(location().pathname).toBe(`/listing/${first.id}`)
     expect(await screen.findByRole('link', { name: 'Back to results' })).toBeInTheDocument()
+  })
+
+  test('the phone page has no viewport-high frame', () => {
+    stubLaptop(false)
+    renderApp('/results')
+    expect(screen.getByTestId('results-frame')).toHaveClass('contents')
   })
 
   test('the List/Map toggle is still there', () => {

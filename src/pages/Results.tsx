@@ -156,7 +156,13 @@ export default function Results() {
 
   return (
     <>
-      <header className="sticky top-0 z-[1050] border-b border-line bg-paper/95 backdrop-blur">
+      {/* Laptop: a viewport-high column (header at its own height, split area takes the rest) that stops at the fixed
+          nav. -mb-24 cancels the 6rem Layout puts under every page, so the page itself never scrolls. */}
+      <div
+        data-testid="results-frame"
+        className={isLg ? 'flex h-[calc(100dvh-3.5rem-env(safe-area-inset-bottom))] -mb-24 flex-col' : 'contents'}
+      >
+      <header className="sticky top-0 z-[1050] shrink-0 border-b border-line bg-paper/95 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 py-3 lg:max-w-none">
           <div className="flex items-end justify-between gap-3">
             <div>
@@ -200,9 +206,8 @@ export default function Results() {
       </header>
 
       {isLg ? (
-        // Header is about 5.25rem; the fixed nav is 3.5rem and the layout leaves 6rem under the page.
         <div
-          className={`-mb-10 grid h-[calc(100dvh-5.25rem-3.5rem)] ${
+          className={`grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] ${
             filtersOpen
               ? 'grid-cols-[17rem_minmax(22rem,28rem)_minmax(0,1fr)]'
               : 'grid-cols-[minmax(22rem,28rem)_minmax(0,1fr)]'
@@ -212,17 +217,17 @@ export default function Results() {
             <aside
               id="filters-sidebar"
               aria-labelledby={sidebarTitleId}
-              className="h-full overflow-y-auto border-r border-line px-4 pt-3 pb-6"
+              className="min-h-0 overflow-y-auto border-r border-line px-4 pt-3 pb-6"
             >
               <FilterPanel filters={filters} onChange={setFilters} count={shown.length} titleId={sidebarTitleId} />
             </aside>
           )}
-          <div className="relative h-full min-w-0 border-r border-line">
+          <div className="relative isolate min-h-0 min-w-0 border-r border-line">
             <div
               ref={listRef}
               inert={selectedListing ? true : undefined}
               aria-hidden={selectedListing ? true : undefined}
-              className="h-full overflow-y-auto px-4 pb-6"
+              className="h-full min-h-0 overflow-y-auto px-4 pb-6"
             >
               <div className="flex flex-wrap items-center gap-2 pt-3">
                 <button
@@ -241,7 +246,7 @@ export default function Results() {
               </section>
             </div>
             {selectedListing && (
-              <div className="absolute inset-0 overflow-y-auto bg-paper">
+              <div className="absolute inset-0 z-20 overflow-y-auto bg-paper">
                 <div className="sticky top-0 z-10 border-b border-line bg-paper/95 px-4 py-2 backdrop-blur">
                   <button
                     type="button"
@@ -260,7 +265,7 @@ export default function Results() {
               </div>
             )}
           </div>
-          <div className="h-full min-w-0">
+          <div className="min-h-0 min-w-0">
             <Suspense fallback={<p className="p-4">Loading map…</p>}>
               <MapView
                 results={mapResults}
@@ -299,6 +304,7 @@ export default function Results() {
           </div>
         </div>
       )}
+      </div>
 
       {drawerOpen && (
         <FilterDrawer filters={filters} onChange={setFilters} count={shown.length} onClose={closeDrawer} />
