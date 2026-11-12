@@ -23,9 +23,9 @@ describe('MapView copy', () => {
   })
 
   test('the tile attribution keeps OpenStreetMap and credits the city transit data', () => {
-    expect(TILE_ATTRIBUTION).toBe(
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · Transit data: City of Guelph',
-    )
+    expect(TILE_ATTRIBUTION).toContain('<a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors')
+    expect(TILE_ATTRIBUTION).toContain('Transit data: <a href="https://mobilitydatabase.org/feeds/gtfs/mdb-3140"')
+    expect(TILE_ATTRIBUTION).toContain('>City of Guelph</a>')
   })
 })
 
@@ -45,7 +45,7 @@ describe('MapView with a selected place', () => {
         <MapView results={withTransfer} onShowList={() => {}} selectedId={transferListing.id} onSelect={() => {}} />
       </MemoryRouter>,
     )
-    expect(dashed(container)).toHaveLength(1)
+    expect(dashed(container)).toHaveLength(2) // walk to the stop, and the short walk between the platforms
     expect(container.querySelector('.pin--selected')).toHaveTextContent(/\$/)
     expect(container.querySelectorAll('.pin--selected')).toHaveLength(1)
   })

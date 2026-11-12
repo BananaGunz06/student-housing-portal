@@ -65,14 +65,19 @@ export interface ViaTransfer {
   minutes: number
   firstRoute: string
   secondRoute: string
+  /** The stop where the second bus is boarded. */
   transferStop: { id: string; name: string }
+  /** Where the first bus lets you off, when that is a different stop (a short walk away). */
+  alightStop?: { id: string; name: string }
 }
 
 export interface Route {
   id: string
-  /** What riders see, e.g. "99" or "50 U". */
+  /** The feed's code, e.g. "99", "50 U" or "IroHarv". */
   shortName: string
   longName: string
+  /** What riders see: the number ("99", "50 U") or, for codes like "IroHarv", the long name. */
+  label: string
   color: string
   /** One line per piece of the route (MultiLineString). */
   paths: LatLng[][]

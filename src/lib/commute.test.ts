@@ -35,6 +35,7 @@ const route = (id: string, shortName: string): Route => ({
   id,
   shortName,
   longName: `Route ${shortName}`,
+  label: shortName,
   color: '#123456',
   paths: [[{ lat: 43.5, lng: -80.2 }, { lat: 43.51, lng: -80.2 }]],
 })
@@ -152,6 +153,17 @@ describe('campusCommute with one transfer (synthetic network)', () => {
     expect(c.transfer).toEqual({ secondRoute: R99, stop: { id: 'x', name: 'Transfer St' } })
   })
 
+  test('keeps the alighting stop when the second bus boards elsewhere', () => {
+    const via = { ...VIA, alightStop: { id: 'y', name: 'Other Side St' } }
+    const c = campusCommute(HOME, [viaStop('v', 0.001, via)], [R2, R99], FAR_CAMPUS)
+    expect(c.mode === 'bus' && c.transfer).toEqual({
+      secondRoute: R99,
+      stop: { id: 'x', name: 'Transfer St' },
+      alightStop: { id: 'y', name: 'Other Side St' },
+    })
+    if (c.mode === 'bus') expect(describeCommute(c)).toContain('(change at Transfer St)')
+  })
+
   test('a shorter direct ride beats a transfer trip', () => {
     const direct = stopAt('d', 0.0045, { r1: 10 }) // 7 + 10
     const c = campusCommute(HOME, [viaStop('v', 0.001, VIA), direct], [R1, R2, R99], FAR_CAMPUS)
@@ -222,6 +234,12 @@ describe('commute text', () => {
     transfer: { secondRoute: R99, stop: { id: 'x', name: 'Transfer St' } },
     route: R2,
   }
+
+  test('route names use the display label, not the feed code', () => {
+    const iro: Route = { ...route('iro', 'IroHarv'), label: 'Ironwood Harvard' }
+    const c: Commute = { ...(bus as Extract<Commute, { mode: 'bus' }>), route: iro }
+    expect(describeCommute(c)).toBe('≈6 min walk to stop · Route Ironwood Harvard · ≈20 min to campus')
+  })
 
   test('one-transfer copy', () => {
     expect(describeCommute(oneTransfer)).toBe(

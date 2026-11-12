@@ -59,6 +59,7 @@ describe('real Guelph Transit network', () => {
     for (const r of ROUTES) {
       expect(r.color).toMatch(/^#[0-9a-f]{6}$/i)
       expect(r.shortName).not.toBe('')
+      expect(r.label).not.toMatch(/^(99Lite|IroHarv|WHanSco|EdiCol)$/)
       expect(r.paths.length).toBeGreaterThanOrEqual(1)
       for (const p of r.paths) expect(p.length).toBeGreaterThan(1)
     }

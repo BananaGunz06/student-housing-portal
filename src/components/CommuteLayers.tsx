@@ -20,6 +20,9 @@ export default function CommuteLayers({ listing, commute }: { listing: Listing; 
       ? STOPS.find((s) => s.id === commute.transfer!.stop.id)
       : undefined
   const transferPt: Pt | null = transferStop ? [transferStop.lat, transferStop.lng] : null
+  const alightId = commute.mode === 'bus' ? commute.transfer?.alightStop?.id : undefined
+  const alightStop = alightId ? STOPS.find((s) => s.id === alightId) : undefined
+  const alightPt: Pt | null = alightStop ? [alightStop.lat, alightStop.lng] : null
 
   return (
     <>
@@ -30,17 +33,32 @@ export default function CommuteLayers({ listing, commute }: { listing: Listing; 
               <Polyline
                 key={r.id}
                 positions={r.paths.map((path) => path.map((p) => [p.lat, p.lng] as Pt))}
-                pathOptions={{ color: r.color, weight: 4, opacity: 0.5 }}
+                pathOptions={{ color: r.color, weight: 5, opacity: 0.85 }}
               />
             ),
         )}
+      {transferPt && alightPt && (
+        <Polyline
+          positions={[alightPt, transferPt]}
+          pathOptions={{ color: '#1c2a35', weight: 3, dashArray: '2 6', lineCap: 'round' }}
+        />
+      )}
+      {alightPt && (
+        <CircleMarker
+          center={alightPt}
+          radius={5}
+          pathOptions={{ color: '#1c2a35', weight: 3, fillColor: '#ffffff', fillOpacity: 1 }}
+        >
+          <Tooltip>Get off: {commute.mode === 'bus' && commute.transfer?.alightStop?.name}</Tooltip>
+        </CircleMarker>
+      )}
       {transferPt && (
         <CircleMarker
           center={transferPt}
           radius={7}
           pathOptions={{ color: '#1c2a35', weight: 3, fillColor: '#ffffff', fillOpacity: 1 }}
         >
-          <Tooltip>Change buses: {commute.mode === 'bus' && commute.transfer?.stop.name}</Tooltip>
+          <Tooltip>{alightPt ? 'Board the second bus: ' : 'Change buses: '}{commute.mode === 'bus' && commute.transfer?.stop.name}</Tooltip>
         </CircleMarker>
       )}
       <Polyline

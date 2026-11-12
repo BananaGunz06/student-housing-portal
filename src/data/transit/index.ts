@@ -15,7 +15,7 @@ interface PointFeature {
   geometry: { coordinates: [number, number] }
 }
 interface LineFeature {
-  properties: { id: string; shortName: string; longName: string; color: string }
+  properties: { id: string; shortName: string; longName: string; label: string; color: string }
   geometry: { coordinates: [number, number][][] }
 }
 

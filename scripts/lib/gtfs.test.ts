@@ -9,6 +9,7 @@ import {
   scheduleLabel,
   serviceDates,
   simplifyLine,
+  routeLabel,
   TRANSFER_MINUTES,
 } from './gtfs.mjs'
 
@@ -168,7 +169,7 @@ describe('buildNetwork', () => {
 
   it('keeps colour (with #), names and one deduped multi-line per route', () => {
     const r = routes.features.find((f) => f.properties.shortName === '99')!
-    expect(r.properties).toEqual({ id: 'r99', shortName: '99', longName: 'Mainline', color: '#FF0000' })
+    expect(r.properties).toEqual({ id: 'r99', shortName: '99', longName: 'Mainline', label: '99', color: '#FF0000' })
     expect(r.geometry.type).toBe('MultiLineString')
     // S1 and S2 are identical, so they collapse into one simplified line.
     expect(r.geometry.coordinates).toEqual([
@@ -413,5 +414,76 @@ U1,University Centre 1,43.58,-80.20
 
   it('never adds viaTransfer to campus stops', () => {
     expect(stop('U1')?.viaTransfer).toBeUndefined()
+  })
+})
+
+describe('one-transfer trips between nearby stops (platforms)', () => {
+  // Route ra rides from S to P1 (a platform where only ra stops). Route rb to campus boards at P2,
+  // a different stop id. P2 is 55 m from P1 in the first network and 220 m in the second.
+  const make = (p2Lat: number) => ({
+    calendar: `service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date
+1,1,0,0,0,0,0,0,20260105,20260105
+`,
+    routes: `route_id,route_short_name,route_long_name,route_color
+ra,A,Feeder,111111
+rb,B,To campus,222222
+`,
+    trips: `route_id,service_id,trip_id,shape_id
+ra,1,a1,
+ra,1,a2,
+rb,1,b1,
+`,
+    stop_times: `trip_id,arrival_time,departure_time,stop_id,stop_sequence
+a1, 7:00:00, 7:00:00,S,1
+a1, 7:10:00, 7:10:00,P1,2
+a2, 8:00:00, 8:00:00,S,1
+a2, 8:10:00, 8:10:00,P1,2
+b1, 7:30:00, 7:30:00,P2,1
+b1, 7:45:00, 7:45:00,U1,2
+`,
+    stops: `stop_id,stop_name,stop_lat,stop_lon
+S,Suburb S,43.50,-80.20
+P1,Platform One,43.56,-80.20
+P2,Platform Two,${p2Lat},-80.20
+U1,University Centre 1,43.58,-80.20
+`,
+    shapes: 'shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\n',
+  })
+  const via = (p2Lat: number) =>
+    buildNetwork(make(p2Lat)).stops.features.find((f) => f.properties.id === 'S')?.properties.viaTransfer
+
+  it('finds the trip when the second route boards at a stop 55 m away, adding the walk', () => {
+    // 0.0005 deg is about 55.6 m: ceil(55.6 x 1.3 / 80) = 1 min. 10 + 1 + 5 + 15 = 31.
+    expect(via(43.5605)).toEqual({
+      minutes: 31,
+      firstRoute: 'ra',
+      secondRoute: 'rb',
+      transferStop: { id: 'P2', name: 'Platform Two' },
+      alightStop: { id: 'P1', name: 'Platform One' },
+    })
+  })
+
+  it('does not use a stop 220 m away', () => {
+    expect(via(43.562)).toBeUndefined()
+  })
+
+  it('rounds the walk up from the metres, with the detour factor', () => {
+    // 0.0012 deg is about 133 m: ceil(133.4 x 1.3 / 80) = 3 min. 10 + 3 + 5 + 15 = 33.
+    expect(via(43.5612)?.minutes).toBe(33)
+  })
+
+  it('charges at least 1 minute when the stops differ, even at the same spot', () => {
+    expect(via(43.56)?.minutes).toBe(31)
+  })
+})
+
+describe('routeLabel', () => {
+  it('keeps number-like short names', () => {
+    expect(routeLabel('99', 'Express')).toBe('99')
+    expect(routeLabel('50 U', 'Whatever')).toBe('50 U')
+  })
+  it('uses the long name for internal codes', () => {
+    expect(routeLabel('IroHarv', 'Ironwood Harvard')).toBe('Ironwood Harvard')
+    expect(routeLabel('99Lite', '99 Lite')).toBe('99 Lite')
   })
 })

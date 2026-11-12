@@ -32,6 +32,24 @@ export const TRANSFER_MINUTES = 5
 /** Departures from the first stop of a transfer trip, seconds after midnight. */
 export const TRANSFER_DEPART_START = 6.5 * 3600
 export const TRANSFER_DEPART_END = 9.5 * 3600
+/** The second bus may board at any stop within this many metres of where the first one stops. */
+export const TRANSFER_RADIUS_M = 150
+const DETOUR_FACTOR = 1.3
+const WALK_M_PER_MIN = 80
+
+/** Great-circle distance in metres between two { lat, lon } points. */
+function metres(a, b) {
+  const rad = Math.PI / 180
+  const dLat = (b.lat - a.lat) * rad
+  const dLon = (b.lon - a.lon) * rad
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2
+  return 2 * 6371000 * Math.asin(Math.sqrt(h))
+}
+
+/** Minutes to walk a straight-line distance (detour x1.3 at 80 m/min); 0 for the same stop, at least 1 otherwise. */
+export function transferWalkMinutes(m, sameStop = false) {
+  return sameStop ? 0 : Math.max(1, Math.ceil((m * DETOUR_FACTOR) / WALK_M_PER_MIN - 1e-9))
+}
 
 /**
  * Parse CSV text (RFC 4180 quotes, optional BOM) into rows keyed by header.
@@ -101,6 +119,17 @@ export function parseTime(s) {
 export function weekdayServices(calendar) {
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
   return new Set(calendar.filter((r) => days.some((d) => r[d] === '1')).map((r) => r.service_id))
+}
+
+/**
+ * What riders see: the short name when it is a route number ("99", "50 U"),
+ * otherwise the long name ("Ironwood Harvard") because codes like "IroHarv" mean nothing to students.
+ * @param {string} shortName
+ * @param {string} longName
+ */
+export function routeLabel(shortName, longName) {
+  const short = (shortName ?? '').trim()
+  return /^\d+(\s?[A-Za-z])?$/.test(short) ? short : (longName ?? '').trim() || short
 }
 
 /** @param {string} d YYYYMMDD */
@@ -321,6 +350,7 @@ export function buildNetwork(files, options = {}) {
         id: r.route_id,
         shortName: r.route_short_name,
         longName: r.route_long_name,
+        label: routeLabel(r.route_short_name, r.route_long_name),
         color: '#' + (r.route_color || '888888').replace(/^#/, '').toUpperCase(),
       },
       geometry: { type: 'MultiLineString', coordinates: lines },
@@ -383,8 +413,9 @@ export function buildNetwork(files, options = {}) {
   }
 
   // One-transfer trips: ride route R1 from S to a later stop B (before the trip reaches campus),
-  // change (TRANSFER_MINUTES), then ride a different route R2 that goes directly to campus from B.
-  /** @type {Map<string, number[]>} key `S|R1|B|R2` */
+  // then board a different route R2 at B or at any other non-campus stop within TRANSFER_RADIUS_M of B
+  // (walk there, then TRANSFER_MINUTES to change) that goes directly to campus.
+  /** @type {Map<string, number[]>} key `S|R1|B` */
   const legs = new Map()
   for (const [tripId, list] of timesByTrip) {
     const r1 = tripRoute.get(tripId)
@@ -399,22 +430,68 @@ export function buildNetwork(files, options = {}) {
         if (to.stop_id === from.stop_id) continue
         const arrive = firstFinite(to.arrival_time, to.departure_time)
         if (!Number.isFinite(arrive)) continue
-        for (const r2 of Object.keys(direct.get(to.stop_id) ?? {})) {
-          if (r2 === r1) continue
-          const key = `${from.stop_id}|${r1}|${to.stop_id}|${r2}`
-          if (!legs.has(key)) legs.set(key, [])
-          legs.get(key)?.push((arrive - depart) / 60)
-        }
+        const key = `${from.stop_id}|${r1}|${to.stop_id}`
+        if (!legs.has(key)) legs.set(key, [])
+        legs.get(key)?.push((arrive - depart) / 60)
       }
     }
   }
-  /** @type {Map<string, { total: number, firstRoute: string, secondRoute: string, via: string }>} */
+
+  // Neighbour index: for each stop, the boarding stops (itself first) within the radius that have a direct ride.
+  const CELL = 0.002 // degrees; larger than the radius in both directions at this latitude
+  const pos = (/** @type {string} */ id) => {
+    const r = stopRows.get(id)
+    return { lat: Number(r?.stop_lat), lon: Number(r?.stop_lon) }
+  }
+  const cellOf = (/** @type {{lat:number,lon:number}} */ p) => [Math.floor(p.lat / CELL), Math.floor(p.lon / CELL)]
+  /** @type {Map<string, string[]>} */
+  const grid = new Map()
+  const boardable = [...direct.keys()]
+    .filter((id) => stopRows.has(id) && !isCampus(id) && Object.keys(direct.get(id) ?? {}).length > 0)
+    .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))
+  for (const id of boardable) {
+    const [cy, cx] = cellOf(pos(id))
+    const k = `${cy}|${cx}`
+    if (!grid.has(k)) grid.set(k, [])
+    grid.get(k)?.push(id)
+  }
+  /** @type {Map<string, { id: string, walk: number }[]>} */
+  const neighbours = new Map()
+  const boardingOptions = (/** @type {string} */ b) => {
+    const cached = neighbours.get(b)
+    if (cached) return cached
+    const p = pos(b)
+    const [cy, cx] = cellOf(p)
+    /** @type {{ id: string, walk: number }[]} */
+    const found = []
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        for (const id of grid.get(`${cy + dy}|${cx + dx}`) ?? []) {
+          if (id === b) continue
+          const m = metres(p, pos(id))
+          if (m <= TRANSFER_RADIUS_M) found.push({ id, walk: transferWalkMinutes(m) })
+        }
+      }
+    }
+    found.sort((x, y) => x.walk - y.walk || x.id.localeCompare(y.id, 'en', { numeric: true }))
+    const out = (direct.get(b) && Object.keys(direct.get(b)).length && !isCampus(b) ? [{ id: b, walk: 0 }] : []).concat(found)
+    neighbours.set(b, out)
+    return out
+  }
+
+  /** @type {Map<string, { total: number, firstRoute: string, secondRoute: string, board: string, alight: string }>} */
   const bestTransfer = new Map()
   for (const key of [...legs.keys()].sort()) {
-    const [sid, r1, bid, r2] = key.split('|')
-    const total = rawMedian(/** @type {number[]} */ (legs.get(key))) + TRANSFER_MINUTES + direct.get(bid)[r2]
-    const cur = bestTransfer.get(sid)
-    if (!cur || total < cur.total) bestTransfer.set(sid, { total, firstRoute: r1, secondRoute: r2, via: bid })
+    const [sid, r1, bid] = key.split('|')
+    const ride = rawMedian(/** @type {number[]} */ (legs.get(key)))
+    for (const { id: nid, walk } of boardingOptions(bid)) {
+      for (const [r2, rideTwo] of Object.entries(direct.get(nid) ?? {})) {
+        if (r2 === r1) continue
+        const total = ride + walk + TRANSFER_MINUTES + rideTwo
+        const cur = bestTransfer.get(sid)
+        if (!cur || total < cur.total) bestTransfer.set(sid, { total, firstRoute: r1, secondRoute: r2, board: nid, alight: bid })
+      }
+    }
   }
 
   const stopFeatures = [...stopRoutes.keys()]
@@ -437,7 +514,10 @@ export function buildNetwork(files, options = {}) {
             minutes,
             firstRoute: t.firstRoute,
             secondRoute: t.secondRoute,
-            transferStop: { id: t.via, name: stopRows.get(t.via)?.stop_name },
+            transferStop: { id: t.board, name: stopRows.get(t.board)?.stop_name },
+          }
+          if (t.alight !== t.board) {
+            properties.viaTransfer.alightStop = { id: t.alight, name: stopRows.get(t.alight)?.stop_name }
           }
         }
       }

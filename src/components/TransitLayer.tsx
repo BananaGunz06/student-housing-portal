@@ -17,7 +17,7 @@ const ROUTE_LINES = ROUTES.map((r) => ({
   route: r,
   positions: r.paths.map((path) => path.map((p) => [p.lat, p.lng] as [number, number])),
 }))
-const ROUTE_NAME = new Map(ROUTES.map((r) => [r.id, r.shortName]))
+const ROUTE_NAME = new Map(ROUTES.map((r) => [r.id, r.label]))
 
 function stopLabel(s: { name: string; routes: string[] }): string {
   const names = s.routes.map((id) => ROUTE_NAME.get(id) ?? id)

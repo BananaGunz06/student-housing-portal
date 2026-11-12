@@ -1,12 +1,13 @@
 import L from 'leaflet'
 import { CAMPUS } from '../data/campus'
-import { STOPS } from '../data/transit'
+import { STOPS, TRANSIT_META } from '../data/transit'
 import type { Listing } from '../data/types'
 import type { Commute } from '../lib/commute'
 
 export const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
 export const TILE_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · Transit data: City of Guelph'
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · Transit data: ' +
+  `<a href="${TRANSIT_META.source}" target="_blank" rel="noopener">City of Guelph</a>`
 
 export const campusIcon = L.divIcon({
   className: 'campus-icon',
@@ -29,5 +30,13 @@ export function commutePoints(listing: Listing, commute: Commute): Pt[] {
   const walkTo: Pt = commute.mode === 'bus' ? [commute.stop.lat, commute.stop.lng] : campus
   const transferStop =
     commute.mode === 'bus' && commute.transfer ? STOPS.find((s) => s.id === commute.transfer!.stop.id) : undefined
-  return [[listing.lat, listing.lng], walkTo, campus, ...(transferStop ? [[transferStop.lat, transferStop.lng] as Pt] : [])]
+  const alightId = commute.mode === 'bus' ? commute.transfer?.alightStop?.id : undefined
+  const alightStop = alightId ? STOPS.find((s) => s.id === alightId) : undefined
+  return [
+    [listing.lat, listing.lng],
+    walkTo,
+    campus,
+    ...(transferStop ? [[transferStop.lat, transferStop.lng] as Pt] : []),
+    ...(alightStop ? [[alightStop.lat, alightStop.lng] as Pt] : []),
+  ]
 }

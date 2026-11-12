@@ -19,7 +19,13 @@ export type BusCommute = {
       /** Ride time; with a transfer, ride plus the change. */
       rideMinutes: number
       /** Present when the trip changes buses once; `route` is then the first bus. */
-      transfer?: { secondRoute: Route; stop: { id: string; name: string } }
+      transfer?: {
+        secondRoute: Route
+        /** Where you board the second bus. */
+        stop: { id: string; name: string }
+        /** Where the first bus lets you off, when it is a different stop nearby. */
+        alightStop?: { id: string; name: string }
+      }
     }
 
 export type Commute =
@@ -77,7 +83,7 @@ export function campusCommute(
       const route = byId.get(via.firstRoute)
       const secondRoute = byId.get(via.secondRoute)
       if (route && secondRoute) {
-        options.push({ route, rideMinutes: via.minutes, transfer: { secondRoute, stop: via.transferStop } })
+        options.push({ route, rideMinutes: via.minutes, transfer: { secondRoute, stop: via.transferStop, ...(via.alightStop && { alightStop: via.alightStop }) } })
       }
     }
     for (const { route, rideMinutes, transfer } of options) {
@@ -113,8 +119,8 @@ export function commuteMinutes(c: Commute): number {
 export function describeCommute(c: Commute): string {
   if (c.mode === 'walk') return `≈${c.minutes} min walk to campus${c.noBusNearby ? ' (no bus nearby)' : ''}`
   const routes = c.transfer
-    ? `Route ${c.route.shortName} then Route ${c.transfer.secondRoute.shortName} (change at ${c.transfer.stop.name})`
-    : `Route ${c.route.shortName}`
+    ? `Route ${c.route.label} then Route ${c.transfer.secondRoute.label} (change at ${c.transfer.stop.name})`
+    : `Route ${c.route.label}`
   return `≈${c.walkToStopMinutes} min walk to stop · ${routes} · ≈${c.minutes} min to campus${c.transfer ? ', 1 transfer' : ''}`
 }
 
