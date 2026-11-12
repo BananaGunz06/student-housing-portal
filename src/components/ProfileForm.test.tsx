@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type { StudentDetails } from '../lib/backend/types'
 import * as avatar from '../lib/avatar'
+import { MemoryRouter } from 'react-router-dom'
 import { AccountProvider } from '../state/AccountState'
 import { AppStateProvider } from '../state/AppState'
 import { createFakeBackend } from '../test/fakeBackend'
@@ -25,11 +26,13 @@ async function setup(details: Partial<StudentDetails> = {}, name = student.name)
   const onSaved = vi.fn()
   const user = userEvent.setup({ applyAccept: false })
   render(
-    <AccountProvider backend={backend}>
-      <AppStateProvider>
-        <ProfileForm submitLabel="Save profile" onSaved={onSaved} secondary={<button type="button">Skip for now</button>} />
-      </AppStateProvider>
-    </AccountProvider>,
+    <MemoryRouter>
+      <AccountProvider backend={backend}>
+        <AppStateProvider>
+          <ProfileForm submitLabel="Save profile" onSaved={onSaved} secondary={<button type="button">Skip for now</button>} />
+        </AppStateProvider>
+      </AccountProvider>
+    </MemoryRouter>,
   )
   await screen.findByLabelText('Bio')
   return { backend, onSaved, user }

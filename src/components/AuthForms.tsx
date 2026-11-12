@@ -46,7 +46,7 @@ const TABS: { mode: Mode; label: string }[] = [
 ]
 
 /** Sign in / Create account forms, shared by the sign-in sheet and the Account page. */
-export default function AuthForms({ initialMode = 'sign-in', onDone }: { initialMode?: Mode; onDone: () => void }) {
+export default function AuthForms({ initialMode = 'sign-in', onDone }: { initialMode?: Mode; onDone: (created: boolean) => void }) {
   const { signIn, signUp } = useAccount()
   const [mode, setMode] = useState<Mode>(initialMode)
   const [name, setName] = useState('')
@@ -86,14 +86,15 @@ export default function AuthForms({ initialMode = 'sign-in', onDone }: { initial
     }
     inFlight.current = true
     setPending(true)
+    const creating = mode === 'create'
     try {
-      const res = mode === 'create' ? await signUp(name.trim(), email.trim(), password) : await signIn(email.trim(), password)
+      const res = creating ? await signUp(name.trim(), email.trim(), password) : await signIn(email.trim(), password)
       if (!res.ok) {
         setFormError(ERROR_COPY[res.error])
       } else if (res.needsConfirmation) {
         setNotice('Check your email to confirm your account, then sign in.')
       } else {
-        onDone()
+        onDone(creating)
       }
     } catch {
       setFormError(ERROR_COPY.unknown)

@@ -4,6 +4,7 @@ import Account from './pages/Account'
 import Compare from './pages/Compare'
 import Conversation from './pages/Conversation'
 import ListingDetail from './pages/ListingDetail'
+import ProfileSetup from './pages/ProfileSetup'
 import Messages from './pages/Messages'
 import NotFound from './pages/NotFound'
 import Results from './pages/Results'
@@ -41,6 +42,7 @@ export function AppRoutes() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/welcome" element={<Welcome />} />
+      <Route path="/profile/setup" element={<ProfileSetup />} />
       <Route element={<Layout />}>
         <Route path="/results" element={<Results />} />
         <Route path="/listing/:id" element={<ListingDetail />} />

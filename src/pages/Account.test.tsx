@@ -55,6 +55,8 @@ describe('Save gating', () => {
 
     await createAccount(user)
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    // A new account is offered profile setup; skipping returns to the listing with the place saved.
+    await user.click(await screen.findByRole('button', { name: 'Skip for now' }))
     expect(saveButton()).toHaveAttribute('aria-pressed', 'true')
   })
 
@@ -279,6 +281,18 @@ describe('Account page', () => {
     expect(await backend.loadProfile()).toMatchObject({ displayName: student.name, phone: '555-0100' })
   })
 
+  test('Account shows Your profile and saving there keeps the student on Account', async () => {
+    const { user, backend, location } = renderApp('/account', { signedInAs: student.email })
+    await sessionReady()
+    expect(await screen.findByRole('heading', { name: 'Your profile' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'View my profile' })).toHaveAttribute('href', expect.stringMatching(/^\/students\/.+/))
+    await user.type(await screen.findByLabelText('Bio'), 'Hello there')
+    await user.click(screen.getByRole('button', { name: 'Save profile' }))
+    expect(await screen.findByText('Saved', { selector: 'p' })).toBeInTheDocument()
+    expect(location().pathname).toBe('/account')
+    expect(await backend.loadProfile()).toMatchObject({ bio: 'Hello there' })
+  })
+
   test('a failed save says so and keeps the typed details', async () => {
     const base = createFakeBackend({ users: [student], sessionEmail: student.email })
     const backend: Backend = { ...base, saveProfile: async () => Promise.reject(new Error('network')) }
@@ -352,9 +366,11 @@ describe('Account page', () => {
       return null
     }
     render(
-      <AccountProvider backend={backend}>
-        <Probe />
-      </AccountProvider>,
+      <MemoryRouter>
+        <AccountProvider backend={backend}>
+          <Probe />
+        </AccountProvider>
+      </MemoryRouter>,
     )
     await sessionReady()
     await act(async () => void (await ref.account.saveProfile({ displayName: 'New', phone: '555-0100' })))
@@ -373,9 +389,11 @@ describe('Account page', () => {
       return null
     }
     render(
-      <AccountProvider backend={backend}>
-        <Probe />
-      </AccountProvider>,
+      <MemoryRouter>
+        <AccountProvider backend={backend}>
+          <Probe />
+        </AccountProvider>
+      </MemoryRouter>,
     )
     await sessionReady()
     expect(ref.account.profile).toBeNull()

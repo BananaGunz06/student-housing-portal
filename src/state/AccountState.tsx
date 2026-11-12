@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import SignInSheet from '../components/SignInSheet'
 import type { AuthResult, Backend, Profile, ProfileUpdate, Session } from '../lib/backend/types'
 
@@ -20,6 +21,8 @@ export interface AccountApi {
   removeAvatar(): Promise<void>
   /** Run `then` now if signed in; otherwise ask the student to sign in first, then run it. */
   requireAccount(reason: AccountReason, then: () => void): void
+  /** Open the profile setup page once the new account's session is present. `returnTo` is where Save/Skip go afterwards. */
+  requestProfileSetup(returnTo?: string): void
   syncStatus: SyncStatus
   /** Used by the cloud sync to report progress. */
   setSyncStatus(s: SyncStatus): void
@@ -46,6 +49,15 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
   const [restoreFailed, setRestoreFailed] = useState(false)
   const [loadedProfile, setLoadedProfile] = useState<{ userId: string; profile: Profile } | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
+  const setupRef = useRef<{ returnTo?: string; at: number } | null>(null)
+  const signedInRef = useRef(false)
+  const navigate = useNavigate()
+  const location = useLocation()
+  const here = location.pathname + location.search
+  const hereRef = useRef(here)
+  useEffect(() => {
+    hereRef.current = here
+  }, [here])
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle')
   const signedIn = session !== null
   const flushRef = useRef<(() => Promise<'saved' | 'failed'>) | null>(null)
@@ -117,13 +129,42 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
     },
     [signedIn],
   )
-  /** Finish one specific request; does nothing if it was dismissed meanwhile. */
-  const finish = useCallback((p: Pending) => {
-    if (pendingRef.current !== p) return
-    pendingRef.current = null
-    setPending(null)
-    p.then()
-  }, [])
+  const openSetup = useCallback(
+    (returnTo?: string) => navigate('/profile/setup', { state: returnTo ? { returnTo } : undefined }),
+    [navigate],
+  )
+  // The session reaches this provider a moment after sign-up resolves, so a request made before then
+  // waits for it (the setup page sends signed-out students to Account). One that never gets a session expires.
+  const requestProfileSetup = useCallback(
+    (returnTo?: string) => {
+      if (signedInRef.current) openSetup(returnTo)
+      else setupRef.current = { returnTo, at: Date.now() }
+    },
+    [openSetup],
+  )
+  useEffect(() => {
+    signedInRef.current = signedIn
+    const req = setupRef.current
+    if (!signedIn || !req) return
+    setupRef.current = null
+    if (Date.now() - req.at < 10_000) openSetup(req.returnTo)
+  }, [signedIn, openSetup])
+  /** Finish one specific request; does nothing if it was dismissed meanwhile. A new account then gets profile setup. */
+  const finish = useCallback(
+    (p: Pending, created: boolean) => {
+      if (pendingRef.current !== p) return
+      pendingRef.current = null
+      setPending(null)
+      if (created) {
+        // A new account lands on setup; a waiting Message is dropped, a waiting Save still runs.
+        requestProfileSetup(hereRef.current)
+        if (p.reason === 'save') p.then()
+        return
+      }
+      p.then()
+    },
+    [requestProfileSetup],
+  )
   const dismiss = useCallback(() => {
     pendingRef.current = null
     setPending(null)
@@ -166,6 +207,7 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
         if (userId) setLoadedProfile((prev) => (prev && prev.userId === userId ? { userId, profile: { ...prev.profile, avatarUrl: null } } : prev))
       },
       requireAccount,
+      requestProfileSetup,
       syncStatus,
       setSyncStatus,
       registerFlush,
@@ -173,13 +215,13 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
       restoreFailed,
       backend,
     }),
-    [registerFlush, flushSync, readProfile, backend, loaded, signedIn, session, profile, userId, requireAccount, syncStatus, restoreFailed],
+    [registerFlush, flushSync, readProfile, backend, loaded, signedIn, session, profile, userId, requireAccount, requestProfileSetup, syncStatus, restoreFailed],
   )
 
   return (
     <AccountContext.Provider value={api}>
       {children}
-      {pending && <SignInSheet reason={pending.reason} onDone={() => finish(pending)} onClose={dismiss} />}
+      {pending && <SignInSheet reason={pending.reason} onDone={(created) => finish(pending, created)} onClose={dismiss} />}
     </AccountContext.Provider>
   )
 }

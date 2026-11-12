@@ -15,7 +15,7 @@ export default function SignInSheet({
   onClose,
 }: {
   reason: AccountReason
-  onDone: () => void
+  onDone: (created: boolean) => void
   onClose: () => void
 }) {
   const titleRef = useRef<HTMLHeadingElement>(null)
