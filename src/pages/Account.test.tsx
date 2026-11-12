@@ -343,7 +343,9 @@ describe('Account page', () => {
   test('a profile load that resolves after a save does not overwrite the saved profile', async () => {
     const base = createFakeBackend({ users: [student], sessionEmail: student.email })
     let resolve!: (p: Profile) => void
-    const backend: Backend = { ...base, loadProfile: () => new Promise<Profile>((r) => (resolve = r)) }
+    let loads = 0
+    // The first load hangs; the re-read after the save gets the real profile.
+    const backend: Backend = { ...base, loadProfile: () => (loads++ === 0 ? new Promise<Profile>((r) => (resolve = r)) : base.loadProfile()) }
     const ref = {} as { account: ReturnType<typeof useAccount> }
     function Probe() {
       ref.account = useAccount()
@@ -358,6 +360,27 @@ describe('Account page', () => {
     await act(async () => void (await ref.account.saveProfile({ displayName: 'New', phone: '555-0100' })))
     await act(async () => resolve({ ...blankProfile, displayName: 'Old' }))
     expect(ref.account.profile).toMatchObject({ displayName: 'New', phone: '555-0100' })
+  })
+
+  test('saving before the profile has loaded re-reads it, so details the server holds are kept', async () => {
+    const base = createFakeBackend({ users: [student], sessionEmail: student.email })
+    await base.saveProfile({ displayName: student.name, bio: 'Hello there', lookingForRoommates: true })
+    let loads = 0
+    const backend: Backend = { ...base, loadProfile: () => (loads++ === 0 ? Promise.reject(new Error('network')) : base.loadProfile()) }
+    const ref = {} as { account: ReturnType<typeof useAccount> }
+    function Probe() {
+      ref.account = useAccount()
+      return null
+    }
+    render(
+      <AccountProvider backend={backend}>
+        <Probe />
+      </AccountProvider>,
+    )
+    await sessionReady()
+    expect(ref.account.profile).toBeNull()
+    await act(async () => void (await ref.account.saveProfile({ displayName: 'New', phone: '555-0100' })))
+    await waitFor(() => expect(ref.account.profile).toMatchObject({ displayName: 'New', phone: '555-0100', bio: 'Hello there', lookingForRoommates: true }))
   })
 
   test('editing after a save clears the Saved message', async () => {

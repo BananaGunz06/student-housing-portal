@@ -8,7 +8,6 @@ interface FakeUser {
   password: string
   profile: Profile
   state: CloudState
-  avatar: Blob | null
   avatarVersion: number
   /** Counts up on every profile save, so "newest first" is deterministic. */
   updatedAt: number
@@ -42,10 +41,14 @@ export function createFakeBackend(opts: FakeOptions = {}): Backend & {
   const users = new Map<string, FakeUser>()
   let n = 0
   let clock = 0
+  // Stored photos by user id, kept apart from the user records so a deleted account's photo can be checked.
+  const photos = new Map<string, Blob>()
+  const idByEmail = new Map<string, string>()
   const avatarUrlOf = (u: FakeUser) => `https://avatars.example.com/${u.id}/avatar.jpg?v=${u.avatarVersion}`
   const addUser = (email: string, password: string, profile: Profile, state: CloudState): FakeUser => {
-    const u: FakeUser = { id: `user-${++n}`, email: email.trim(), password, profile, state, avatar: null, avatarVersion: 0, updatedAt: ++clock }
+    const u: FakeUser = { id: `user-${++n}`, email: email.trim(), password, profile, state, avatarVersion: 0, updatedAt: ++clock }
     users.set(key(email), u)
+    idByEmail.set(key(email), u.id)
     return u
   }
   for (const u of opts.users ?? []) addUser(u.email, u.password, newProfile(u.name), structuredClone({ ...emptyState(), ...u.state }))
@@ -68,7 +71,7 @@ export function createFakeBackend(opts: FakeOptions = {}): Backend & {
   }
   const cardOf = (u: FakeUser): StudentCard => {
     const { phone: _phone, avatarUrl: _avatarUrl, ...rest } = u.profile
-    return { ...rest, id: u.id, avatarUrl: u.avatar ? avatarUrlOf(u) : null }
+    return { ...rest, id: u.id, avatarUrl: photos.has(u.id) ? avatarUrlOf(u) : null }
   }
   const visible = (u: FakeUser) => u.profile.lookingForRoommates && u.profile.displayName !== ''
   const setCurrent = (u: FakeUser | null) => {
@@ -86,7 +89,8 @@ export function createFakeBackend(opts: FakeOptions = {}): Backend & {
       return structuredClone(u.state)
     },
     avatarOf(email) {
-      return users.get(key(email))?.avatar ?? null
+      const id = idByEmail.get(key(email))
+      return (id && photos.get(id)) || null
     },
     async getSession() {
       // A real session read takes a network round trip; the initial event lands well before it.
@@ -126,13 +130,13 @@ export function createFakeBackend(opts: FakeOptions = {}): Backend & {
     },
     async deleteAccount() {
       const u = await signedIn()
-      u.avatar = null
+      photos.delete(u.id)
       users.delete(key(u.email))
       setCurrent(null)
     },
     async loadProfile() {
       const u = await signedIn()
-      return { ...structuredClone(u.profile), avatarUrl: u.avatar ? avatarUrlOf(u) : null }
+      return { ...structuredClone(u.profile), avatarUrl: photos.has(u.id) ? avatarUrlOf(u) : null }
     },
     async saveProfile(p) {
       const u = await signedIn()
@@ -163,12 +167,15 @@ export function createFakeBackend(opts: FakeOptions = {}): Backend & {
     },
     async uploadAvatar(jpeg) {
       const u = await signedIn()
-      u.avatar = jpeg
+      photos.set(u.id, jpeg)
       u.avatarVersion = ++clock
+      u.updatedAt = clock // the database stamps updated_at on every profile row change
       return avatarUrlOf(u)
     },
     async removeAvatar() {
-      ;(await signedIn()).avatar = null
+      const u = await signedIn()
+      photos.delete(u.id)
+      u.updatedAt = ++clock
     },
   }
 }

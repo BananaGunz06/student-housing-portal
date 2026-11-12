@@ -80,13 +80,23 @@ values ('avatars', 'avatars', false, 1048576, '{image/jpeg}')
 on conflict (id) do update
   set public = false, file_size_limit = 1048576, allowed_mime_types = '{image/jpeg}';
 
--- Signed-in users can see photos; each user can only add, replace or delete files in their own folder.
+-- Photos can be seen by their owner and by anyone when the owner is looking for roommates.
+-- Each user can only add, replace or delete files in their own folder.
 drop policy if exists "avatars: read" on storage.objects;
 drop policy if exists "avatars: insert own" on storage.objects;
 drop policy if exists "avatars: update own" on storage.objects;
 drop policy if exists "avatars: delete own" on storage.objects;
 create policy "avatars: read" on storage.objects for select to authenticated
-  using (bucket_id = 'avatars');
+  using (
+    bucket_id = 'avatars'
+    and (
+      (storage.foldername(name))[1] = (select auth.uid())::text
+      or exists (
+        select 1 from public.profiles p
+        where p.id::text = (storage.foldername(name))[1] and p.looking_for_roommates
+      )
+    )
+  );
 create policy "avatars: insert own" on storage.objects for insert to authenticated
   with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
 create policy "avatars: update own" on storage.objects for update to authenticated
@@ -94,3 +104,24 @@ create policy "avatars: update own" on storage.objects for update to authenticat
   with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
 create policy "avatars: delete own" on storage.objects for delete to authenticated
   using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+-- 5. Guard rails: the photo path can only be the user's own file, and the server keeps the clock.
+alter table public.profiles drop constraint if exists profiles_avatar_path_own;
+alter table public.profiles add constraint profiles_avatar_path_own
+  check (avatar_path is null or avatar_path = id::text || '/avatar.jpg');
+
+create or replace function public.touch_profile()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists profiles_touch on public.profiles;
+create trigger profiles_touch
+  before update on public.profiles
+  for each row execute function public.touch_profile();

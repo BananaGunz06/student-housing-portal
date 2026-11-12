@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { shouldForwardAuthEvent } from './authEvents'
 import { bandBounds } from './bands'
-import { cloudStateToRow, dataError, profileUpdateRow, mapAuthError, rowToCloudState } from './supabase'
+import { cloudStateToRow, dataError, isUuid, profileUpdateRow, mapAuthError, rowToCloudState } from './supabase'
 
 describe('mapAuthError', () => {
   it('maps invalid credentials', () => {
@@ -70,7 +70,7 @@ describe('shouldForwardAuthEvent', () => {
 describe('profileUpdateRow', () => {
   it('maps only the fields that are supplied', () => {
     const row = profileUpdateRow({ displayName: 'Sam' })
-    expect(Object.keys(row).sort()).toEqual(['display_name', 'updated_at'])
+    expect(Object.keys(row)).toEqual(['display_name'])
     expect(row.display_name).toBe('Sam')
     expect(profileUpdateRow({ displayName: 'Sam', bio: 'Hi', year: null, lookingForRoommates: true, moveInTerm: '2027-fall', program: 'CS', budget: 700 })).toMatchObject({
       bio: 'Hi',
@@ -94,5 +94,15 @@ describe('bandBounds', () => {
     expect(bandBounds('600-800')).toEqual({ over: 600, upTo: 800 })
     expect(bandBounds('800-1000')).toEqual({ over: 800, upTo: 1000 })
     expect(bandBounds('over1000')).toEqual({ over: 1000 })
+  })
+})
+
+describe('isUuid', () => {
+  it('accepts UUIDs and rejects anything else', () => {
+    expect(isUuid('3f2b8c1e-9d4a-4e5b-8a6c-1d2e3f4a5b6c')).toBe(true)
+    expect(isUuid('3F2B8C1E-9D4A-4E5B-8A6C-1D2E3F4A5B6C')).toBe(true)
+    expect(isUuid('abc')).toBe(false)
+    expect(isUuid('')).toBe(false)
+    expect(isUuid('3f2b8c1e-9d4a-4e5b-8a6c-1d2e3f4a5b6c; drop')).toBe(false)
   })
 })

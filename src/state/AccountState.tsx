@@ -34,18 +34,6 @@ interface Pending {
   then: () => void
 }
 
-const NO_PROFILE: Profile = {
-  displayName: '',
-  phone: null,
-  bio: '',
-  program: '',
-  year: null,
-  moveInTerm: null,
-  budget: null,
-  lookingForRoommates: false,
-  avatarUrl: null,
-}
-
 const AccountContext = createContext<AccountApi | null>(null)
 
 export function AccountProvider({ backend, children }: { backend: Backend; children: ReactNode }) {
@@ -150,14 +138,15 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
         profileGen.current++
         await backend.saveProfile(p)
         if (!userId) return
-        if (p.phone === undefined) {
-          // The stored phone was kept, and we don't know it: read the profile again.
+        if (p.phone === undefined || !profile) {
+          // Either the stored phone was kept and we don't know it, or the profile never loaded
+          // and we don't know what else the server holds: read it again.
           readProfile(userId, () => true)
         } else {
           profileGen.current++
           // Supplied fields replace the current ones; everything else (photo, ...) stays.
           const supplied = Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined))
-          setLoadedProfile({ userId, profile: { ...(profile ?? NO_PROFILE), ...supplied } as Profile })
+          setLoadedProfile((prev) => (prev && prev.userId === userId ? { userId, profile: { ...prev.profile, ...supplied } } : prev))
         }
       },
       requireAccount,

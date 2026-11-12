@@ -50,7 +50,7 @@ export function cloudStateToRow(userId: string, s: CloudState) {
   }
 }
 
-/** The `profiles` columns a profile change sets. Fields left out are left alone; the phone lives in `profile_private`. */
+/** The `profiles` columns a profile change sets (the database stamps `updated_at`). Fields left out are left alone; the phone lives in `profile_private`. */
 export function profileUpdateRow(p: ProfileUpdate) {
   return {
     display_name: p.displayName,
@@ -60,8 +60,14 @@ export function profileUpdateRow(p: ProfileUpdate) {
     ...(p.moveInTerm === undefined ? {} : { move_in_term: p.moveInTerm }),
     ...(p.budget === undefined ? {} : { budget: p.budget }),
     ...(p.lookingForRoommates === undefined ? {} : { looking_for_roommates: p.lookingForRoommates }),
-    updated_at: new Date().toISOString(),
   }
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** Postgres rejects ids that aren't UUIDs, so check before asking. */
+export function isUuid(id: string): boolean {
+  return UUID.test(id)
 }
 
 export interface ProfileRow {
@@ -256,6 +262,7 @@ export function createSupabaseBackend(url: string, key: string): Backend {
     },
     async getStudent(id) {
       await userId()
+      if (!isUuid(id)) return null
       const { data, error } = await sb
         .from('profiles')
         .select(PROFILE_COLUMNS)
