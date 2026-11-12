@@ -9,6 +9,8 @@ import Messages from './pages/Messages'
 import NotFound from './pages/NotFound'
 import Results from './pages/Results'
 import Saved from './pages/Saved'
+import StudentProfile from './pages/StudentProfile'
+import Students from './pages/Students'
 import Welcome from './pages/Welcome'
 import { defaultBackend } from './lib/backend'
 import { AccountProvider } from './state/AccountState'
@@ -46,6 +48,8 @@ export function AppRoutes() {
       <Route element={<Layout />}>
         <Route path="/results" element={<Results />} />
         <Route path="/listing/:id" element={<ListingDetail />} />
+        <Route path="/students" element={<Students />} />
+        <Route path="/students/:id" element={<StudentProfile />} />
         <Route path="/saved" element={<Saved />} />
         <Route path="/compare" element={<Compare />} />
         <Route path="/messages" element={<Messages />} />
