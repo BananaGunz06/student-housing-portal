@@ -32,6 +32,18 @@ async function createAccount(user: ReturnType<typeof renderApp>['user'], email =
   await user.click(within(dialog).getByRole('button', { name: 'Create account' }))
 }
 
+const blankProfile: Profile = {
+  displayName: '',
+  phone: null,
+  bio: '',
+  program: '',
+  year: null,
+  moveInTerm: null,
+  budget: null,
+  lookingForRoommates: false,
+  avatarUrl: null,
+}
+
 describe('Save gating', () => {
   test('signed out: Save asks to sign in, then saves after creating an account', async () => {
     setBudget(1000)
@@ -264,7 +276,7 @@ describe('Account page', () => {
     await user.type(screen.getByLabelText('Phone (optional)'), '555-0100')
     await user.click(screen.getByRole('button', { name: 'Save' }))
     expect(await screen.findByText('Saved', { selector: 'p' })).toBeInTheDocument()
-    expect(await backend.loadProfile()).toEqual({ displayName: student.name, phone: '555-0100' })
+    expect(await backend.loadProfile()).toMatchObject({ displayName: student.name, phone: '555-0100' })
   })
 
   test('a failed save says so and keeps the typed details', async () => {
@@ -285,7 +297,7 @@ describe('Account page', () => {
     const { user } = renderApp('/account', { backend })
     await sessionReady()
     await user.type(screen.getByLabelText('Name'), 'Typed')
-    await act(async () => resolve({ displayName: student.name, phone: '555-0100' }))
+    await act(async () => resolve({ ...blankProfile, displayName: student.name, phone: '555-0100' }))
     expect(screen.getByLabelText('Name')).toHaveValue('Typed')
     expect(screen.getByLabelText('Phone (optional)')).toHaveValue('555-0100')
   })
@@ -312,7 +324,7 @@ describe('Account page', () => {
     await user.type(screen.getByLabelText('Name'), 'Fresh')
     await user.click(screen.getByRole('button', { name: 'Save' }))
     expect(await screen.findByText('Saved', { selector: 'p' })).toBeInTheDocument()
-    expect(await base.loadProfile()).toEqual({ displayName: 'Fresh', phone: '555-0100' })
+    expect(await base.loadProfile()).toMatchObject({ displayName: 'Fresh', phone: '555-0100' })
   })
 
   test('saving without having loaded the profile still sets a phone the student typed', async () => {
@@ -325,7 +337,7 @@ describe('Account page', () => {
     await user.type(screen.getByLabelText('Phone (optional)'), '555-0199')
     await user.click(screen.getByRole('button', { name: 'Save' }))
     expect(await screen.findByText('Saved', { selector: 'p' })).toBeInTheDocument()
-    expect(await base.loadProfile()).toEqual({ displayName: 'Fresh', phone: '555-0199' })
+    expect(await base.loadProfile()).toMatchObject({ displayName: 'Fresh', phone: '555-0199' })
   })
 
   test('a profile load that resolves after a save does not overwrite the saved profile', async () => {
@@ -344,8 +356,8 @@ describe('Account page', () => {
     )
     await sessionReady()
     await act(async () => void (await ref.account.saveProfile({ displayName: 'New', phone: '555-0100' })))
-    await act(async () => resolve({ displayName: 'Old', phone: null }))
-    expect(ref.account.profile).toEqual({ displayName: 'New', phone: '555-0100' })
+    await act(async () => resolve({ ...blankProfile, displayName: 'Old' }))
+    expect(ref.account.profile).toMatchObject({ displayName: 'New', phone: '555-0100' })
   })
 
   test('editing after a save clears the Saved message', async () => {
@@ -504,7 +516,7 @@ describe('Account page', () => {
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByText(DELETE_QUESTION)).toBeNull()
     expect(screen.getByText(student.email)).toBeInTheDocument()
-    expect(await backend.loadProfile()).toEqual({ displayName: student.name, phone: null })
+    expect(await backend.loadProfile()).toMatchObject({ displayName: student.name, phone: null })
   })
 
   test('a failed delete shows the error and keeps the account', async () => {

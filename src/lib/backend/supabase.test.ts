@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { shouldForwardAuthEvent } from './authEvents'
+import { bandBounds } from './bands'
 import { cloudStateToRow, dataError, profileUpdateRow, mapAuthError, rowToCloudState } from './supabase'
 
 describe('mapAuthError', () => {
@@ -67,13 +68,31 @@ describe('shouldForwardAuthEvent', () => {
 })
 
 describe('profileUpdateRow', () => {
-  it('sends the phone when it is given, including clearing it', () => {
-    expect(profileUpdateRow({ displayName: 'Sam', phone: '555-0100' })).toMatchObject({ display_name: 'Sam', phone: '555-0100' })
-    expect(profileUpdateRow({ displayName: 'Sam', phone: null })).toMatchObject({ phone: null })
-  })
-  it('leaves the phone out when it is unchanged', () => {
+  it('maps only the fields that are supplied', () => {
     const row = profileUpdateRow({ displayName: 'Sam' })
-    expect(row).not.toHaveProperty('phone')
+    expect(Object.keys(row).sort()).toEqual(['display_name', 'updated_at'])
     expect(row.display_name).toBe('Sam')
+    expect(profileUpdateRow({ displayName: 'Sam', bio: 'Hi', year: null, lookingForRoommates: true, moveInTerm: '2027-fall', program: 'CS', budget: 700 })).toMatchObject({
+      bio: 'Hi',
+      year: null,
+      looking_for_roommates: true,
+      move_in_term: '2027-fall',
+      program: 'CS',
+      budget: 700,
+    })
+  })
+  it('never includes the phone, which lives in its own table', () => {
+    expect(profileUpdateRow({ displayName: 'Sam', phone: '555-0100' })).not.toHaveProperty('phone')
+    expect(profileUpdateRow({ displayName: 'Sam', phone: null })).not.toHaveProperty('phone')
+  })
+})
+
+describe('bandBounds', () => {
+  it('describes each band as over (exclusive) and upTo (inclusive)', () => {
+    expect(bandBounds('any')).toEqual({})
+    expect(bandBounds('under600')).toEqual({ upTo: 600 })
+    expect(bandBounds('600-800')).toEqual({ over: 600, upTo: 800 })
+    expect(bandBounds('800-1000')).toEqual({ over: 800, upTo: 1000 })
+    expect(bandBounds('over1000')).toEqual({ over: 1000 })
   })
 })

@@ -34,6 +34,18 @@ interface Pending {
   then: () => void
 }
 
+const NO_PROFILE: Profile = {
+  displayName: '',
+  phone: null,
+  bio: '',
+  program: '',
+  year: null,
+  moveInTerm: null,
+  budget: null,
+  lookingForRoommates: false,
+  avatarUrl: null,
+}
+
 const AccountContext = createContext<AccountApi | null>(null)
 
 export function AccountProvider({ backend, children }: { backend: Backend; children: ReactNode }) {
@@ -143,7 +155,9 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
           readProfile(userId, () => true)
         } else {
           profileGen.current++
-          setLoadedProfile({ userId, profile: { displayName: p.displayName, phone: p.phone } })
+          // Supplied fields replace the current ones; everything else (photo, ...) stays.
+          const supplied = Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined))
+          setLoadedProfile({ userId, profile: { ...(profile ?? NO_PROFILE), ...supplied } as Profile })
         }
       },
       requireAccount,
