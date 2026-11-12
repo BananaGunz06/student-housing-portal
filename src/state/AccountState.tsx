@@ -14,6 +14,10 @@ export interface AccountApi {
   signOut(): Promise<void>
   deleteAccount(): Promise<void>
   saveProfile(p: ProfileUpdate): Promise<void>
+  /** Store a new photo (already a square JPEG); `profile.avatarUrl` follows. */
+  uploadAvatar(jpeg: Blob): Promise<void>
+  /** Remove the photo; `profile.avatarUrl` becomes null. */
+  removeAvatar(): Promise<void>
   /** Run `then` now if signed in; otherwise ask the student to sign in first, then run it. */
   requireAccount(reason: AccountReason, then: () => void): void
   syncStatus: SyncStatus
@@ -148,6 +152,18 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
           const supplied = Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined))
           setLoadedProfile((prev) => (prev && prev.userId === userId ? { userId, profile: { ...prev.profile, ...supplied } } : prev))
         }
+      },
+      uploadAvatar: async (jpeg) => {
+        profileGen.current++
+        const url = await backend.uploadAvatar(jpeg)
+        profileGen.current++
+        if (userId) setLoadedProfile((prev) => (prev && prev.userId === userId ? { userId, profile: { ...prev.profile, avatarUrl: url } } : prev))
+      },
+      removeAvatar: async () => {
+        profileGen.current++
+        await backend.removeAvatar()
+        profileGen.current++
+        if (userId) setLoadedProfile((prev) => (prev && prev.userId === userId ? { userId, profile: { ...prev.profile, avatarUrl: null } } : prev))
       },
       requireAccount,
       syncStatus,
