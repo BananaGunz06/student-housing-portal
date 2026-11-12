@@ -60,7 +60,10 @@ describe('laptop split view', () => {
     const split = frame.querySelector('.grid')!
     expect(split).toHaveClass('flex-1', 'min-h-0', 'grid-rows-[minmax(0,1fr)]')
     const panel = screen.getByRole('button', { name: 'Back to list' }).closest('.absolute')!
-    expect(panel).toHaveClass('z-20')
+    // No stacking context of its own, so the panel's dialogs and toast can rise above the map and nav.
+    expect(panel.className).not.toMatch(/\bz-|isolate/)
+    expect(panel.parentElement!.className).not.toMatch(/\bz-|isolate/)
+    expect(panel.previousElementSibling).toHaveClass('isolate')
   })
 
   test('hovering or focusing a card tells the map which pin to raise', async () => {

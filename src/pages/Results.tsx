@@ -222,12 +222,12 @@ export default function Results() {
               <FilterPanel filters={filters} onChange={setFilters} count={shown.length} titleId={sidebarTitleId} />
             </aside>
           )}
-          <div className="relative isolate min-h-0 min-w-0 border-r border-line">
+          <div className="relative min-h-0 min-w-0 border-r border-line">
             <div
               ref={listRef}
               inert={selectedListing ? true : undefined}
               aria-hidden={selectedListing ? true : undefined}
-              className="h-full min-h-0 overflow-y-auto px-4 pb-6"
+              className="isolate h-full min-h-0 overflow-y-auto px-4 pb-6"
             >
               <div className="flex flex-wrap items-center gap-2 pt-3">
                 <button
@@ -246,7 +246,7 @@ export default function Results() {
               </section>
             </div>
             {selectedListing && (
-              <div className="absolute inset-0 z-20 overflow-y-auto bg-paper">
+              <div className="absolute inset-0 overflow-y-auto bg-paper">
                 <div className="sticky top-0 z-10 border-b border-line bg-paper/95 px-4 py-2 backdrop-blur">
                   <button
                     type="button"
@@ -256,12 +256,14 @@ export default function Results() {
                     Back to list
                   </button>
                 </div>
-                <ListingDetailContent
-                  key={selectedListing.id}
-                  listing={selectedListing}
-                  variant="panel"
-                  headingRef={headingRef}
-                />
+                <div className="pb-6">
+                  <ListingDetailContent
+                    key={selectedListing.id}
+                    listing={selectedListing}
+                    variant="panel"
+                    headingRef={headingRef}
+                  />
+                </div>
               </div>
             )}
           </div>
