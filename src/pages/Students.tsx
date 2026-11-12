@@ -13,7 +13,7 @@ const buttonClass = 'inline-flex min-h-11 items-center justify-center rounded-fu
 type Result = { key: string; students: Student[]; hasMore: boolean } | { key: string; error: true }
 
 export default function Students() {
-  const { status, backend, profile } = useAccount()
+  const { status, backend, profile, session } = useAccount()
   const [params, setParams] = useSearchParams()
   const [terms] = useState(() => upcomingTerms(new Date()))
   const termParam = params.get('term')
@@ -25,8 +25,16 @@ export default function Students() {
   const [retry, setRetry] = useState(0)
   const [result, setResult] = useState<Result | null>(null)
   const [more, setMore] = useState<'idle' | 'loading' | 'error'>('idle')
-  const key = `${term}|${band}|${retry}`
+  const viewer = session?.userId ?? ''
+  const key = `${viewer}|${term}|${band}|${retry}`
   const keyRef = useRef(key)
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
   useEffect(() => {
     keyRef.current = key
   }, [key])
@@ -49,11 +57,12 @@ export default function Students() {
     setMore('loading')
     try {
       const next = await backend.listStudents({ moveInTerm: term || undefined, band, offset: r.students.length, limit: PAGE })
-      if (keyRef.current !== asked) return
-      setResult({ key: asked, students: [...r.students, ...next.students], hasMore: next.hasMore })
+      if (!mounted.current || keyRef.current !== asked) return
+      const seen = new Set(r.students.map((x) => x.id))
+      setResult({ key: asked, students: [...r.students, ...next.students.filter((x) => !seen.has(x.id))], hasMore: next.hasMore })
       setMore('idle')
     } catch {
-      if (keyRef.current === asked) setMore('error')
+      if (mounted.current && keyRef.current === asked) setMore('error')
     }
   }
 

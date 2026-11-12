@@ -9,13 +9,14 @@ import { useAccount } from '../state/AccountState'
 const buttonClass = 'inline-flex min-h-11 items-center justify-center rounded-full bg-ink px-6 font-bold text-white'
 const linkClass = 'inline-flex min-h-11 items-center font-bold underline'
 
-type Result = { id: string; retry: number; student: StudentCard | null } | { id: string; retry: number; error: true }
+type Result = { id: string; viewer: string; retry: number; student: StudentCard | null } | { id: string; viewer: string; retry: number; error: true }
 
 export default function StudentProfile() {
   const { id = '' } = useParams()
   const { status, session, profile, backend } = useAccount()
   const [retry, setRetry] = useState(0)
   const [result, setResult] = useState<Result | null>(null)
+  const viewer = session?.userId ?? ''
   const own = session !== null && session.userId === id
   const fetching = status === 'signed-in' && !own
 
@@ -24,12 +25,12 @@ export default function StudentProfile() {
     let current = true
     backend
       .getStudent(id)
-      .then((student) => current && setResult({ id, retry, student }))
-      .catch(() => current && setResult({ id, retry, error: true }))
+      .then((student) => current && setResult({ id, viewer, retry, student }))
+      .catch(() => current && setResult({ id, viewer, retry, error: true }))
     return () => {
       current = false
     }
-  }, [backend, fetching, id, retry])
+  }, [backend, fetching, id, viewer, retry])
 
   if (status === 'loading') return <Page>Loading…</Page>
   if (status === 'signed-out') return <Navigate to="/account" replace />
@@ -46,7 +47,7 @@ export default function StudentProfile() {
   } else if (own) {
     return <Page>Loading…</Page>
   } else {
-    const r = result && result.id === id && result.retry === retry ? result : null
+    const r = result && result.id === id && result.viewer === viewer && result.retry === retry ? result : null
     if (!r) return <Page>Loading…</Page>
     if ('error' in r) {
       return (

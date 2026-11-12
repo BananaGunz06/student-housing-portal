@@ -58,6 +58,14 @@ describe('Student profile page', () => {
     expect(screen.getByRole('link', { name: 'Back to Students' })).toHaveAttribute('href', '/students')
   })
 
+  test('a real student with roommates off shows "This profile isn\'t available."', async () => {
+    const backend = createFakeBackend({ users: [me], students: [{ email: 'off@example.com', name: 'Off Student', lookingForRoommates: false }], sessionEmail: me.email })
+    // Ids are sequential: user-1 is the viewer, user-2 is the student with the switch off.
+    renderApp('/students/user-2', { backend })
+    expect(await screen.findByText("This profile isn't available.")).toBeInTheDocument()
+    expect(screen.queryByText('Off Student')).toBeNull()
+  })
+
   test('own profile shows Edit profile even with roommates off', async () => {
     const backend = createFakeBackend({ users: [me], sessionEmail: me.email })
     await backend.saveProfile({ displayName: me.name, bio: 'My own bio', lookingForRoommates: false })

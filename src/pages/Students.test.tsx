@@ -1,6 +1,7 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
 import type { Backend } from '../lib/backend/types'
+import { getAll } from '../lib/listingsRepo'
 import { upcomingTerms } from '../lib/profile'
 import { createFakeBackend, type FakeOptions } from '../test/fakeBackend'
 import { renderApp, sessionReady, setBudget } from '../test/renderApp'
@@ -74,6 +75,39 @@ describe('Students page', () => {
     expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull()
   })
 
+  test('Show more does not repeat a student when the list shifts between pages', async () => {
+    const many = Array.from({ length: 31 }, (_, i) => ({ email: `s${i}@example.com`, name: `Student ${String(i).padStart(2, '0')}`, lookingForRoommates: true }))
+    const base = createFakeBackend({ users: [me], students: many, sessionEmail: me.email })
+    // Someone new joined after page 1 loaded: page 2 starts one place earlier.
+    const backend: Backend = { ...base, listStudents: (q) => base.listStudents(q.offset > 0 ? { ...q, offset: q.offset - 1 } : q) }
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { user } = setup('/students', many, backend)
+    await screen.findAllByRole('link', { name: /^Student / })
+    await user.click(screen.getByRole('button', { name: 'Show more' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull())
+    const names = screen.getAllByRole('link', { name: /^Student / }).map((a) => a.textContent)
+    expect(new Set(names).size).toBe(names.length)
+    expect(names).toHaveLength(31)
+    expect(errors).not.toHaveBeenCalled()
+    errors.mockRestore()
+  })
+
+  test('a late Show more page is not appended after the filters changed', async () => {
+    const many = Array.from({ length: 31 }, (_, i) => ({ email: `s${i}@example.com`, name: `Student ${String(i).padStart(2, '0')}`, lookingForRoommates: true, budget: 650 }))
+    const base = createFakeBackend({ users: [me], students: many, sessionEmail: me.email })
+    let release: () => void = () => {}
+    const gate = new Promise<void>((r) => (release = r))
+    const backend: Backend = { ...base, listStudents: async (q) => (q.offset > 0 ? (await gate, base.listStudents(q)) : base.listStudents(q)) }
+    const { user } = setup('/students', many, backend)
+    await screen.findAllByRole('link', { name: /^Student / })
+    await user.click(screen.getByRole('button', { name: 'Show more' }))
+    await user.selectOptions(screen.getByLabelText('Budget'), 'over1000')
+    expect(await screen.findByText('No students match these filters.')).toBeInTheDocument()
+    await act(async () => release())
+    expect(screen.getByText('No students match these filters.')).toBeInTheDocument()
+    expect(screen.queryAllByRole('link', { name: /^Student / })).toHaveLength(0)
+  })
+
   test('empty state copy', async () => {
     setup('/students', [])
     expect(
@@ -130,6 +164,21 @@ describe('Students page', () => {
     expect(within(nav).getByRole('link', { name: 'Places' })).toHaveAttribute('aria-current', 'page')
     await user.click(within(nav).getByRole('link', { name: 'Students' }))
     expect(location().pathname).toBe('/students')
+    expect(within(nav).getByRole('link', { name: 'Students' })).toHaveAttribute('aria-current', 'page')
+    expect(within(nav).getByRole('link', { name: 'Places' })).not.toHaveAttribute('aria-current')
+  })
+
+  test('Places is active on the map view and a listing; Students on a profile', async () => {
+    setBudget(1000)
+    const backend = createFakeBackend({ users: [me], students: seekers, sessionEmail: me.email })
+    const { navigate } = setup('/results?view=map', seekers, backend)
+    await sessionReady()
+    const nav = screen.getByRole('navigation', { name: 'Main' })
+    expect(within(nav).getByRole('link', { name: 'Places' })).toHaveAttribute('aria-current', 'page')
+    await act(async () => navigate(`/listing/${getAll()[0].id}`))
+    expect(within(nav).getByRole('link', { name: 'Places' })).toHaveAttribute('aria-current', 'page')
+    const { students } = await backend.listStudents({ offset: 0, limit: 5 })
+    await act(async () => navigate(`/students/${students[0].id}`))
     expect(within(nav).getByRole('link', { name: 'Students' })).toHaveAttribute('aria-current', 'page')
     expect(within(nav).getByRole('link', { name: 'Places' })).not.toHaveAttribute('aria-current')
   })
