@@ -1,6 +1,6 @@
 import L from 'leaflet'
 import { CAMPUS } from '../data/campus'
-import { STOPS, TRANSIT_META } from '../data/transit'
+import { ROUTES, STOPS, TRANSIT_META } from '../data/transit'
 import type { Listing } from '../data/types'
 import type { Commute } from '../lib/commute'
 
@@ -39,4 +39,12 @@ export function commutePoints(listing: Listing, commute: Commute): Pt[] {
     ...(transferStop ? [[transferStop.lat, transferStop.lng] as Pt] : []),
     ...(alightStop ? [[alightStop.lat, alightStop.lng] as Pt] : []),
   ]
+}
+
+const ROUTE_NAME = new Map(ROUTES.map((r) => [r.id, r.label]))
+
+export function stopLabel(s: { name: string; routes: string[] }): string {
+  const names = s.routes.map((id) => ROUTE_NAME.get(id) ?? id)
+  names.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+  return `${s.name} · Route${names.length === 1 ? '' : 's'} ${names.join(', ')}`
 }

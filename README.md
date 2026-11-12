@@ -22,7 +22,7 @@ Version 1 is a portfolio piece and an idea test. Browsing needs no account. Sign
 - **True monthly cost.** Rent + utilities + internet + bus pass. Every result shows **Fits**, **Stretch** (up to 10% over) or **Over budget**, always as text and an icon, never colour alone. A meter shows the cost against your budget.
 - **Results.** Fits and Stretch places, cheapest first. A list/map toggle, plus filters for bedrooms, type of place, furnished, longest commute and move-in month. When nothing fits, it suggests the nearest budget that has results ("Nothing fits $600. 3 places fit at $650.").
 - **Map.** A price on every pin, coloured and marked by fit. Bus routes as lines, stops as dots, campus marked. Tap a pin for a preview.
-- **Listing detail.** The cost breakdown, how much of your budget is left, what's included, and lease details. A mini-map shows the nearest stop with a dashed walking line: "≈6 min walk to stop · Route 20 · ≈22 min to campus".
+- **Listing detail.** The cost breakdown, how much of your budget is left, what's included, and lease details. A mini-map shows the best stop with a dashed walking line: "≈6 min walk to stop · Route 99 · ≈10 min to campus".
 - **Saved + Compare.** Save places, then compare 2 or 3 side by side.
 - **Contact the poster in the app.** Every listing shows who posted it (landlord, property manager or a student subletting) and how fast they usually reply. Anyone can be messaged in the app, so posters don't have to put a phone number or email online. Call, text and email links appear only for posters who chose to share them.
 - **Students share only what they want.** The message form starts with an editable note ("Hi Sam, is the room on Dean Ave still available…") and optional name, phone, email and "anything else". Only filled-in details go with the message, and each sent message shows exactly what was shared. The Messages tab keeps every conversation, with follow-ups.
@@ -51,7 +51,7 @@ Browsing needs no account: search, filters and every listing work without signin
   3. In the SQL Editor, run `supabase/migrations/0002_profiles.sql`. It adds the profile fields, the private phone table and the private photo storage.
   4. For the demo, turn off **Confirm email** under Authentication → Sign In / Providers → Email. Otherwise new accounts must confirm by email before they can sign in.
   5. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` for the app. Only the publishable (anon) key belongs in the repo or the browser. Never add the secret or service_role key.
-- **Data note.** Account data is demo data, like the rest of the sample app. Listings and posters are still fictional.
+- **Data note.** Account data is demo data. Listings and posters are still fictional, while the bus network is real.
 
 ## Deploy
 
@@ -64,16 +64,16 @@ One-time setup: in the repo's **Settings → Pages**, set **Source** to **GitHub
 Listings and posters are **sample data for a demo**, and the bus network is real:
 
 - **Listings** are 40 fictional places, priced to look like the Guelph student market. `scripts/generate-listings.mjs` generates them from a fixed seed into `src/data/listings.json`.
-- **Bus routes, stops and ride times** come from Guelph Transit's official [GTFS feed](https://mobilitydatabase.org/feeds/gtfs/mdb-3140), currently the **Winter 2026** schedule. Transit data: City of Guelph (open data licence).
+- **Bus routes, stops and ride times** come from Guelph Transit's official [GTFS feed](https://mobilitydatabase.org/feeds/gtfs/mdb-3140), currently the **Winter 2026** schedule. Transit data: City of Guelph (open data licence), linked from the map credit.
 - **Refreshing the bus data.** Run `node scripts/build-transit-from-gtfs.mjs` to download the latest feed, or pass the path to a downloaded zip: `node scripts/build-transit-from-gtfs.mjs path/to/feed.zip`. It rewrites `routes.geojson`, `stops.geojson` and `meta.json` in `src/data/transit/`. The parsing helpers live in `scripts/lib/gtfs.mjs`.
 - **Posters are fictional.** Names are made up, phone numbers use the reserved 555-01xx range and emails use `example.com`. About a third of posters share no phone or email, so messaging in the app is their only contact.
 - **Messaging is a demo.** Messages to sample listings aren't delivered to anyone, and posters can't reply yet. Messages are kept in your account, so they follow you to any device. The app says so on the message form and the Messages tab. Making it real needs a server that stores and delivers messages and gives posters an inbox; `AppState.sendMessage` and `listingsRepo` are where that would plug in.
 - **Photos are generated illustrations**, not real photos (`src/components/ListingArt.tsx`).
 - **Bus pass is $0 a month.** U of G undergraduates pay the Universal Bus Pass (UPass) through their student fees. Change `transitMonthly` in `src/data/campus.ts` for other campuses.
 - **Commute times are estimates**, marked "≈":
-  - If the walk to campus is 15 minutes or less (or no slower than the bus), walking is shown.
-  - Otherwise, the best of a direct bus or one change of bus, from a stop within a 15-minute walk. Ride times are the median scheduled minutes on a typical weekday morning; a change of buses adds 5 minutes. Waiting for the bus isn't included.
   - Walking: straight-line distance × 1.3 at about 80 m a minute.
+  - If the walk to campus is 15 minutes or less (or no slower than the bus), walking is shown.
+  - Otherwise, the best of a direct bus or one change of bus, from a stop within a 15-minute walk. Ride times are the median scheduled minutes on a typical weekday morning; a change of buses adds 5 minutes, plus the walk if the second bus boards at another stop up to 150 m away (as at Guelph Central Station). Waiting for the bus isn't included.
   - If no bus is within reach, the walking time is shown with "(no bus nearby)".
 - **Utilities and internet.** When they're not included, the listing's own estimate is used, falling back to the campus defaults.
 
@@ -89,7 +89,7 @@ src/
   lib/
     listingsRepo.ts   the ONLY way screens get listings (getAll, getById); swap in an API here later
     cost.ts           trueMonthlyCost, fitStatus (Fits / Stretch / Over), money formatting
-    commute.ts        distance, walk minutes, nearest stop, campus commute estimate
+    commute.ts        distance, walk minutes, best stop or transfer, campus commute estimate
     filters.ts        evaluate listings for a budget, filter + sort, nearest budget with results
     messages.ts       message validation, what gets shared, starter text, conversations
     useModal.ts       shared bottom-sheet behaviour (focus trap, Escape, scroll lock)
