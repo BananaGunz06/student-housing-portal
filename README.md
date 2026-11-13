@@ -8,13 +8,17 @@ Version 1 is a portfolio piece and an idea test. Browsing needs no account. Sign
 
 | Budget | Results | Listing | Map | Compare |
 |---|---|---|---|---|
-| ![Welcome screen asking for a monthly budget](docs/screenshots/welcome.png) | ![Results with fit badges and budget meters](docs/screenshots/results.png) | ![Cost breakdown and walk-to-stop map](docs/screenshots/detail-map.png) | ![Map with price pins and bus routes](docs/screenshots/map.png) | ![Two saved places compared](docs/screenshots/compare.png) |
+| ![Welcome screen asking for a monthly budget](docs/screenshots/welcome.png) | ![Results with fit badges and budget meters](docs/screenshots/results.png) | ![Commute estimate with the walk to the stop and the bus route on a map](docs/screenshots/detail-map.png) | ![Map with price pins and bus routes](docs/screenshots/map.png) | ![Two saved places compared](docs/screenshots/compare.png) |
 
 | Posted by | Message the poster | Conversation |
 |---|---|---|
 | ![Posted by card with a Message button for a poster who keeps their number private](docs/screenshots/posted-by.png) | ![Message form with optional details to share](docs/screenshots/message-sheet.png) | ![A sent message showing exactly what was shared](docs/screenshots/conversation.png) |
 
-![Results on a laptop](docs/screenshots/laptop-results.png)
+| Set up your profile | Students | A student's profile |
+|---|---|---|
+| ![Optional profile form shown after sign-up, with photo, bio, program, year and move-in term](docs/screenshots/profile-setup.png) | ![Students tab listing a student who is looking for roommates](docs/screenshots/students.png) | ![A student's profile page with program, year, move-in term, budget and bio](docs/screenshots/student-profile.png) |
+
+![Results on a laptop: filters, listings and the map side by side](docs/screenshots/laptop-results.png)
 
 ## What it does
 
