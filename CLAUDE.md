@@ -2,11 +2,14 @@
 
 ## Workflow (the owner's standing preference)
 
-1. **Plan with Opus.** Talk ideas through, write the spec (`docs/superpowers/specs/`) and the implementation plan (`docs/superpowers/plans/`), and get the owner's approval before building.
-2. **Every plan step gets its own builder** (a fresh subagent per task):
-   - **Haiku** for simple, mechanical steps (small edits, copy, docs, one or two files with a complete spec).
-   - **Sonnet** for thorough steps (multi-file work, integration, state, data, anything needing judgment).
-3. **Test and review with Opus.** Each step is reviewed by an Opus reviewer before the next starts, and the whole branch gets a final Opus review. Browser checks (Playwright, phone 375 px and laptop 1280 px) are part of testing.
+Keep usage low: few builders, one review per part, one thing at a time.
+
+1. **Plan first.** Talk ideas through, write the spec (`docs/superpowers/specs/`) and the implementation plan (`docs/superpowers/plans/`), and get the owner's approval before building.
+2. **Few, large build steps.** Group a plan into as few steps as sensible and let one builder carry several related steps, so builders don't keep starting from scratch. Resume an existing builder for follow-up fixes instead of starting a new one.
+   - **Haiku** for simple, mechanical work (small edits, copy, docs).
+   - **Sonnet** for everything else.
+3. **One Opus review per part, at the end.** No review after each step or each fix. If a re-check of fixes is needed, keep it small and use Sonnet. Browser checks (Playwright, phone 375 px and laptop 1280 px) are part of the end-of-part testing.
+4. **One thing at a time.** Don't run builders or reviewers in parallel.
 
 Always name the model explicitly when dispatching a subagent.
 

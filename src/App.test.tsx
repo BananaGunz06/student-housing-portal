@@ -10,6 +10,13 @@ test('first visit asks for a budget', () => {
   expect(screen.queryByRole('navigation', { name: 'Main' })).not.toBeInTheDocument()
 })
 
+test('the welcome screen says browsing needs no sign-up and the budget stays on the device', () => {
+  renderApp('/')
+  expect(
+    screen.getByText('No sign-up needed to browse. Your budget stays on this device unless you sign in.'),
+  ).toBeInTheDocument()
+})
+
 test('a remembered budget goes straight to results', () => {
   setBudget(1000)
   renderApp('/')

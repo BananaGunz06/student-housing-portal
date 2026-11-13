@@ -78,7 +78,7 @@ export default function Welcome() {
         <button type="submit" className="mt-auto min-h-14 rounded-full bg-ink px-6 text-lg font-bold text-white sm:mt-8">
           Show places that fit
         </button>
-        <p className="mt-3 text-center text-sm text-ink-soft">No sign-up. Your budget stays on this device.</p>
+        <p className="mt-3 text-center text-sm text-ink-soft">No sign-up needed to browse. Your budget stays on this device unless you sign in.</p>
       </form>
     </main>
   )

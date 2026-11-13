@@ -8,36 +8,36 @@ const REASONS: Record<AccountReason, string> = {
   message: 'Sign in to message posters and keep your conversations on any device.',
 }
 
-/** Bottom sheet that asks the student to sign in before Save or Message. */
+/** Bottom sheet on phones, centred dialog on larger screens, that asks the student to sign in before Save or Message. */
 export default function SignInSheet({
   reason,
   onDone,
   onClose,
 }: {
   reason: AccountReason
-  onDone: () => void
+  onDone: (created: boolean) => void
   onClose: () => void
 }) {
   const titleRef = useRef<HTMLHeadingElement>(null)
   const dialogRef = useModal(onClose, titleRef)
   const titleId = useId()
   return (
-    <div className="fixed inset-0 z-[1300] flex items-end justify-center">
+    <div className="fixed inset-0 z-[1300] flex items-end justify-center sm:items-center sm:p-6">
       <div className="absolute inset-0 bg-ink/40" onClick={onClose} aria-hidden="true" />
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-3xl bg-paper"
+        className="relative flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-3xl bg-paper sm:max-h-[calc(100dvh-3rem)] sm:rounded-3xl"
       >
-        <div className="border-b border-line px-5 py-3">
+        <div className="shrink-0 border-b border-line px-5 py-3">
           <h2 id={titleId} ref={titleRef} tabIndex={-1} className="font-display text-2xl font-bold outline-none">
             Sign in
           </h2>
           <p className="text-sm text-ink-soft">{REASONS[reason]}</p>
         </div>
-        <div className="overflow-y-auto px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <AuthForms onDone={onDone} />
           <button type="button" className="mt-3 min-h-11 rounded-full px-4 font-bold underline" onClick={onClose}>
             Not now

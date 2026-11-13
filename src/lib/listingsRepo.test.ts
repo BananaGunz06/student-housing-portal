@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { CAMPUS } from '../data/campus'
-import { ROUTES, STOPS } from '../data/transit'
+import { ROUTES, STOPS, TRANSIT_META } from '../data/transit'
+import { campusCommute, distanceMeters } from './commute'
 import { getAll, getById } from './listingsRepo'
 
 describe('listingsRepo', () => {
@@ -46,26 +47,50 @@ describe('listingsRepo', () => {
   })
 })
 
-describe('sample transit', () => {
-  test('the campus stop exists and is served by every route', () => {
-    const campus = STOPS.find((s) => s.id === CAMPUS.stopId)
-    expect(campus).toBeDefined()
-    expect([...campus!.routes].sort()).toEqual(ROUTES.map((r) => r.id).sort())
+describe('real Guelph Transit network', () => {
+  test('University Centre platforms exist and are marked as campus', () => {
+    const uc = STOPS.filter((s) => s.campus)
+    expect(uc.length).toBeGreaterThan(0)
+    for (const s of uc) expect(distanceMeters(s, CAMPUS)).toBeLessThan(300)
   })
 
-  test('every route passes through the campus loop', () => {
+  test('every route has a colour, a short name and at least one path', () => {
+    expect(ROUTES.length).toBeGreaterThan(0)
     for (const r of ROUTES) {
-      expect(
-        r.path.some((p) => p.lat === CAMPUS.lat && p.lng === CAMPUS.lng),
-      ).toBe(true)
+      expect(r.color).toMatch(/^#[0-9a-f]{6}$/i)
+      expect(r.shortName).not.toBe('')
+      expect(r.label).not.toMatch(/^(99Lite|IroHarv|WHanSco|EdiCol)$/)
+      expect(r.paths.length).toBeGreaterThanOrEqual(1)
+      for (const p of r.paths) expect(p.length).toBeGreaterThan(1)
     }
   })
 
-  test("every stop's routes exist", () => {
+  test("every stop's routes exist and every ride time belongs to one of its routes", () => {
     const ids = new Set(ROUTES.map((r) => r.id))
     for (const s of STOPS) {
-      expect(s.routes.length).toBeGreaterThan(0)
       for (const r of s.routes) expect(ids.has(r)).toBe(true)
+      for (const [r, mins] of Object.entries(s.toCampus)) {
+        expect(s.routes).toContain(r)
+        expect(mins).toBeGreaterThanOrEqual(0)
+      }
     }
+  })
+
+  test('a Gordon St stop off campus has a ride time to the University Centre', () => {
+    expect(
+      STOPS.some((s) => !s.campus && /gordon/i.test(s.name) && Object.keys(s.toCampus).length > 0),
+    ).toBe(true)
+  })
+
+  test('some listings get a direct bus, some a one-transfer bus, and a spot next to campus walks', () => {
+    const commutes = getAll().map((l) => campusCommute(l))
+    expect(commutes.some((c) => c.mode === 'bus' && !c.transfer)).toBe(true)
+    expect(commutes.some((c) => c.mode === 'bus' && c.transfer)).toBe(true)
+    const nearCampus = { lat: CAMPUS.lat + 0.002, lng: CAMPUS.lng }
+    expect(campusCommute(nearCampus).mode).toBe('walk')
+  })
+
+  test('TRANSIT_META names the schedule', () => {
+    expect(TRANSIT_META.schedule).toBe('Winter 2026')
   })
 })

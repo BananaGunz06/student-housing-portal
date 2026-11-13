@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_FILTERS } from '../lib/filters'
 import type { Message } from '../lib/messages'
 import { createFakeBackend } from '../test/fakeBackend'
+import { MemoryRouter } from 'react-router-dom'
 import { AccountProvider, useAccount, type AccountApi } from './AccountState'
 import { AppStateProvider, useAppState, type AppState } from './AppState'
 import { CloudSync } from './CloudSync'
@@ -21,12 +22,14 @@ function setup(backend: Backend) {
     return null
   }
   render(
-    <AccountProvider backend={backend}>
-      <AppStateProvider>
-        <CloudSync />
-        <Probe />
-      </AppStateProvider>
-    </AccountProvider>,
+    <MemoryRouter>
+      <AccountProvider backend={backend}>
+        <AppStateProvider>
+          <CloudSync />
+          <Probe />
+        </AppStateProvider>
+      </AccountProvider>
+    </MemoryRouter>,
   )
   return ref
 }

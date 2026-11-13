@@ -11,19 +11,28 @@ function Icon({ d }: { d: string }) {
 
 const ICONS = {
   list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
-  map: 'M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3zM9 3v15M15 6v15',
+  people: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   saved: 'M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z',
   account: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   messages: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
 }
 
 export default function BottomNav() {
-  const { pathname, search } = useLocation()
+  const { pathname } = useLocation()
   const { savedIds } = useAppState()
-  const isMap = pathname === '/results' && new URLSearchParams(search).get('view') === 'map'
   const items = [
-    { to: '/results', label: 'List', icon: ICONS.list, active: pathname === '/results' && !isMap },
-    { to: '/results?view=map', label: 'Map', icon: ICONS.map, active: isMap },
+    {
+      to: '/results',
+      label: 'Places',
+      icon: ICONS.list,
+      active: pathname === '/results' || pathname.startsWith('/listing/'),
+    },
+    {
+      to: '/students',
+      label: 'Students',
+      icon: ICONS.people,
+      active: pathname === '/students' || pathname.startsWith('/students/'),
+    },
     {
       to: '/saved',
       label: savedIds.length ? `Saved (${savedIds.length})` : 'Saved',

@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import Avatar from '../components/Avatar'
 import AuthForms from '../components/AuthForms'
+import ProfileForm from '../components/ProfileForm'
 import type { Profile, ProfileUpdate } from '../lib/backend/types'
 import { useAccount, type SyncStatus } from '../state/AccountState'
 
@@ -12,7 +15,7 @@ const SYNC_COPY: Partial<Record<SyncStatus, string>> = {
 const DELETE_QUESTION = 'Delete your account? This removes your saved places, messages and sign-in. It can’t be undone.'
 
 export default function Account() {
-  const { status, session, profile, syncStatus, signOut, deleteAccount, saveProfile, flushSync } = useAccount()
+  const { status, session, profile, syncStatus, signOut, deleteAccount, saveProfile, flushSync, requestProfileSetup } = useAccount()
 
   return (
     <div className="mx-auto max-w-3xl px-4 pt-6">
@@ -22,7 +25,7 @@ export default function Account() {
         <section className="mt-4 flex flex-col gap-4">
           <p className="text-ink-soft">Sign in to keep your saved places and messages on any device.</p>
           <div className="rounded-2xl border border-line bg-card p-4">
-            <AuthForms onDone={() => {}} />
+            <AuthForms onDone={(created) => created && requestProfileSetup()} />
           </div>
         </section>
       )}
@@ -36,7 +39,9 @@ export default function Account() {
             {SYNC_COPY[syncStatus]}
           </p>
 
-          <ProfileForm key={session.userId} profile={profile} onSave={saveProfile} />
+          <DetailsForm key={session.userId} profile={profile} onSave={saveProfile} />
+
+          <YourProfile name={profile?.displayName ?? ''} avatarUrl={profile?.avatarUrl ?? null} userId={session.userId} />
 
           <LogOut onSignOut={signOut} onFlush={flushSync} />
 
@@ -129,11 +134,40 @@ function LogOut({ onSignOut, onFlush }: { onSignOut: () => Promise<void>; onFlus
   )
 }
 
+/** Student details and photo, shown on the public profile, with a link to see it. */
+function YourProfile({ name, avatarUrl, userId }: { name: string; avatarUrl: string | null; userId: string }) {
+  const [saved, setSaved] = useState(false)
+  useEffect(() => {
+    if (!saved) return
+    const t = setTimeout(() => setSaved(false), 4000)
+    return () => clearTimeout(t)
+  }, [saved])
+  return (
+    <section aria-labelledby="your-profile" className="flex flex-col gap-4 rounded-2xl border border-line bg-card p-4">
+      <div className="flex items-center gap-3">
+        <Avatar name={name} url={avatarUrl} size="md" />
+        <h2 id="your-profile" className="font-display text-xl font-bold">
+          Your profile
+        </h2>
+      </div>
+      <ProfileForm submitLabel="Save profile" onSaved={() => setSaved(true)} />
+      {saved && (
+        <p role="status" className="text-sm font-bold">
+          Saved
+        </p>
+      )}
+      <Link to={`/students/${userId}`} className="inline-flex min-h-11 items-center self-start font-bold underline">
+        View my profile
+      </Link>
+    </section>
+  )
+}
+
 /**
  * Name and phone. The fields start from the profile when it arrives, unless the student has
  * already typed in them. The form stays mounted across saves so the "Saved" message holds.
  */
-function ProfileForm({ profile, onSave }: { profile: Profile | null; onSave: (p: ProfileUpdate) => Promise<void> }) {
+function DetailsForm({ profile, onSave }: { profile: Profile | null; onSave: (p: ProfileUpdate) => Promise<void> }) {
   const [name, setName] = useState(profile?.displayName ?? '')
   const [phone, setPhone] = useState(profile?.phone ?? '')
   const [nameError, setNameError] = useState<string | null>(null)

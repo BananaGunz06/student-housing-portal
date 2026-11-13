@@ -119,6 +119,13 @@ input[type='range'] {
   opacity: 0.85;
 }
 .pin--selected { outline: 3px solid var(--color-ink); }
+/* Hovered from the list: bigger, lifted and dashed-outlined, so it isn't only a colour change. */
+.pin--hover {
+  transform: translate(-50%, -12px) scale(1.25);
+  outline: 3px dashed var(--color-ink);
+  outline-offset: 2px;
+  box-shadow: 0 4px 8px rgb(28 42 53 / 0.45);
+}
 .pin--home { background: var(--color-ink); color: var(--color-highlight); border-top-color: var(--color-ink); }
 .campus-icon {
   background: var(--color-ink);

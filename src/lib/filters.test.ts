@@ -6,7 +6,12 @@ const cheap = makeListing({ id: 'a', rent: 700 })
 const mid = makeListing({ id: 'b', rent: 900, type: 'studio', bedrooms: 0, furnished: true })
 const pricey = makeListing({ id: 'c', rent: 950, type: 'apartment', bedrooms: 2, availableFrom: '2027-09' })
 const big = makeListing({ id: 'd', rent: 2500, type: 'house', bedrooms: 4 })
-const far = makeListing({ id: 'e', rent: 650, lat: 43.4961, lng: -80.2121 })
+// Exhibition Park: a long Route 99 ride, so a longer commute than the walkers.
+const far = makeListing({ id: 'e', rent: 650, lat: 43.55124, lng: -80.26554 })
+// Outside the city, nowhere near a campus-bound stop.
+const stranded = makeListing({ id: 'f', rent: 600, lat: 43.45, lng: -80.4 })
+// Kitchener-side spot whose best trip changes buses once (Route 20 then Route 18).
+const changer = makeListing({ id: 'g', rent: 700, lat: 43.53968, lng: -80.27128 })
 const all = [pricey, big, cheap, mid, far]
 
 const ids = (budget: number, f = DEFAULT_FILTERS) =>
@@ -26,6 +31,37 @@ describe('applyFilters', () => {
     expect(r.cost.total).toBe(700)
     expect(r.fit).toBe('stretch')
     expect(r.commute.mode).toBe('walk')
+  })
+
+  test('far places take the bus; stranded ones walk with no bus nearby', () => {
+    expect(evaluate([far], 5000)[0].commute.mode).toBe('bus')
+    expect(evaluate([stranded], 5000)[0].commute).toMatchObject({ mode: 'walk', noBusNearby: true })
+  })
+
+  test('no-bus-nearby places count with their walking minutes', () => {
+    const minutes = evaluate([stranded], 5000)[0].commute.minutes
+    const f = (maxCommute: number | null) =>
+      applyFilters(evaluate([stranded], 5000), { ...DEFAULT_FILTERS, maxCommute }).length
+    expect(f(null)).toBe(1)
+    expect(f(minutes)).toBe(1)
+    expect(f(minutes - 1)).toBe(0)
+  })
+
+  test('a one-transfer commute counts with its minutes against the limit', () => {
+    const c = evaluate([changer], 5000)[0].commute
+    expect(c.mode === 'bus' && c.transfer).toBeTruthy()
+    const minutes = (c as { minutes: number }).minutes
+    const f = (maxCommute: number | null) =>
+      applyFilters(evaluate([changer], 5000), { ...DEFAULT_FILTERS, maxCommute }).length
+    expect(f(minutes)).toBe(1)
+    expect(f(minutes - 1)).toBe(0)
+    expect(f(null)).toBe(1)
+  })
+
+  test('a bus commute within the limit stays, beyond it goes', () => {
+    const minutes = (evaluate([far], 5000)[0].commute as { minutes: number }).minutes
+    expect(applyFilters(evaluate([far], 5000), { ...DEFAULT_FILTERS, maxCommute: minutes })).toHaveLength(1)
+    expect(applyFilters(evaluate([far], 5000), { ...DEFAULT_FILTERS, maxCommute: minutes - 1 })).toHaveLength(0)
   })
 
   test('bedrooms 3 means 3 or more', () => {

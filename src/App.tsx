@@ -4,10 +4,13 @@ import Account from './pages/Account'
 import Compare from './pages/Compare'
 import Conversation from './pages/Conversation'
 import ListingDetail from './pages/ListingDetail'
+import ProfileSetup from './pages/ProfileSetup'
 import Messages from './pages/Messages'
 import NotFound from './pages/NotFound'
 import Results from './pages/Results'
 import Saved from './pages/Saved'
+import StudentProfile from './pages/StudentProfile'
+import Students from './pages/Students'
 import Welcome from './pages/Welcome'
 import { defaultBackend } from './lib/backend'
 import { AccountProvider } from './state/AccountState'
@@ -41,9 +44,12 @@ export function AppRoutes() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/welcome" element={<Welcome />} />
+      <Route path="/profile/setup" element={<ProfileSetup />} />
       <Route element={<Layout />}>
         <Route path="/results" element={<Results />} />
         <Route path="/listing/:id" element={<ListingDetail />} />
+        <Route path="/students" element={<Students />} />
+        <Route path="/students/:id" element={<StudentProfile />} />
         <Route path="/saved" element={<Saved />} />
         <Route path="/compare" element={<Compare />} />
         <Route path="/messages" element={<Messages />} />

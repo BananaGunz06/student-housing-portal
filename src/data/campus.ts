@@ -1,10 +1,9 @@
 export const CAMPUS = {
   name: 'University of Guelph',
   shortName: 'U of G',
-  lat: 43.5305,
-  lng: -80.2262,
-  /** Stop id of the on-campus bus loop every sample route passes through. */
-  stopId: 'campus',
+  /** Centre of the 13 University Centre bus platforms (average of their stop coordinates). */
+  lat: 43.52935,
+  lng: -80.22424,
   /**
    * Extra monthly transit cost for a student. U of G undergraduates pay the
    * Universal Bus Pass (UPass) through their student fees, so it adds nothing

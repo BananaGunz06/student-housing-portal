@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import SignInSheet from '../components/SignInSheet'
 import type { AuthResult, Backend, Profile, ProfileUpdate, Session } from '../lib/backend/types'
 
@@ -9,13 +10,23 @@ export interface AccountApi {
   status: 'loading' | 'signed-out' | 'signed-in'
   session: Session | null
   profile: Profile | null
+  /** Whether `profile` has been read: still loading, failed (see `reloadProfile`), or ready. */
+  profileStatus: 'loading' | 'error' | 'ready'
+  /** Read the profile again after a failed load. */
+  reloadProfile(): void
   signIn(email: string, password: string): Promise<AuthResult>
   signUp(name: string, email: string, password: string): Promise<AuthResult>
   signOut(): Promise<void>
   deleteAccount(): Promise<void>
   saveProfile(p: ProfileUpdate): Promise<void>
+  /** Store a new photo (already a square JPEG); `profile.avatarUrl` follows. */
+  uploadAvatar(jpeg: Blob): Promise<void>
+  /** Remove the photo; `profile.avatarUrl` becomes null. */
+  removeAvatar(): Promise<void>
   /** Run `then` now if signed in; otherwise ask the student to sign in first, then run it. */
   requireAccount(reason: AccountReason, then: () => void): void
+  /** Open the profile setup page once the new account's session is present. `returnTo` is where Save/Skip go afterwards. */
+  requestProfileSetup(returnTo?: string): void
   syncStatus: SyncStatus
   /** Used by the cloud sync to report progress. */
   setSyncStatus(s: SyncStatus): void
@@ -41,7 +52,18 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
   const [loaded, setLoaded] = useState(false)
   const [restoreFailed, setRestoreFailed] = useState(false)
   const [loadedProfile, setLoadedProfile] = useState<{ userId: string; profile: Profile } | null>(null)
+  /** The user whose profile read failed, if any. */
+  const [failedProfileFor, setFailedProfileFor] = useState<string | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
+  const setupRef = useRef<{ returnTo?: string; at: number } | null>(null)
+  const signedInRef = useRef(false)
+  const navigate = useNavigate()
+  const location = useLocation()
+  const here = location.pathname + location.search
+  const hereRef = useRef(here)
+  useEffect(() => {
+    hereRef.current = here
+  }, [here])
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle')
   const signedIn = session !== null
   const flushRef = useRef<(() => Promise<'saved' | 'failed'>) | null>(null)
@@ -85,9 +107,14 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
       backend
         .loadProfile()
         .then((p) => {
-          if (isLive() && gen === profileGen.current) setLoadedProfile({ userId: uid, profile: p })
+          if (isLive() && gen === profileGen.current) {
+            setLoadedProfile({ userId: uid, profile: p })
+            setFailedProfileFor(null)
+          }
         })
-        .catch(() => {})
+        .catch(() => {
+          if (isLive() && gen === profileGen.current) setFailedProfileFor(uid)
+        })
     },
     [backend],
   )
@@ -102,6 +129,12 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
 
   // Only the profile of the current user counts; a stale one is ignored.
   const profile = loadedProfile && loadedProfile.userId === userId ? loadedProfile.profile : null
+  const profileStatus = profile ? 'ready' : failedProfileFor !== null && failedProfileFor === userId ? 'error' : 'loading'
+  const reloadProfile = useCallback(() => {
+    if (!userId) return
+    setFailedProfileFor(null)
+    readProfile(userId, () => true)
+  }, [userId, readProfile])
   // The ref is the truth about which action is waiting; `pending` only drives rendering.
   const pendingRef = useRef<Pending | null>(null)
   const requireAccount = useCallback(
@@ -113,13 +146,44 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
     },
     [signedIn],
   )
-  /** Finish one specific request; does nothing if it was dismissed meanwhile. */
-  const finish = useCallback((p: Pending) => {
-    if (pendingRef.current !== p) return
-    pendingRef.current = null
-    setPending(null)
-    p.then()
-  }, [])
+  const openSetup = useCallback(
+    (returnTo?: string) =>
+      // Opened from the sign-in sheet on a page: replace that entry, so Back doesn't pass through setup twice.
+      navigate('/profile/setup', { state: returnTo ? { returnTo } : undefined, replace: returnTo !== undefined && returnTo === hereRef.current }),
+    [navigate],
+  )
+  // The session reaches this provider a moment after sign-up resolves, so a request made before then
+  // waits for it (the setup page sends signed-out students to Account). One that never gets a session expires.
+  const requestProfileSetup = useCallback(
+    (returnTo?: string) => {
+      if (signedInRef.current) openSetup(returnTo)
+      else setupRef.current = { returnTo, at: Date.now() }
+    },
+    [openSetup],
+  )
+  useEffect(() => {
+    signedInRef.current = signedIn
+    const req = setupRef.current
+    if (!signedIn || !req) return
+    setupRef.current = null
+    if (Date.now() - req.at < 10_000) openSetup(req.returnTo)
+  }, [signedIn, openSetup])
+  /** Finish one specific request; does nothing if it was dismissed meanwhile. A new account then gets profile setup. */
+  const finish = useCallback(
+    (p: Pending, created: boolean) => {
+      if (pendingRef.current !== p) return
+      pendingRef.current = null
+      setPending(null)
+      if (created) {
+        // A new account lands on setup; a waiting Message is dropped, a waiting Save still runs.
+        requestProfileSetup(hereRef.current)
+        if (p.reason === 'save') p.then()
+        return
+      }
+      p.then()
+    },
+    [requestProfileSetup],
+  )
   const dismiss = useCallback(() => {
     pendingRef.current = null
     setPending(null)
@@ -130,6 +194,8 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
       status: !loaded ? 'loading' : signedIn ? 'signed-in' : 'signed-out',
       session,
       profile,
+      profileStatus,
+      reloadProfile,
       signIn: (email, password) => backend.signIn(email, password),
       signUp: (name, email, password) => backend.signUp(name, email, password),
       signOut: () => backend.signOut(),
@@ -138,15 +204,31 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
         profileGen.current++
         await backend.saveProfile(p)
         if (!userId) return
-        if (p.phone === undefined) {
-          // The stored phone was kept, and we don't know it: read the profile again.
+        if (p.phone === undefined || !profile) {
+          // Either the stored phone was kept and we don't know it, or the profile never loaded
+          // and we don't know what else the server holds: read it again.
           readProfile(userId, () => true)
         } else {
           profileGen.current++
-          setLoadedProfile({ userId, profile: { displayName: p.displayName, phone: p.phone } })
+          // Supplied fields replace the current ones; everything else (photo, ...) stays.
+          const supplied = Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined))
+          setLoadedProfile((prev) => (prev && prev.userId === userId ? { userId, profile: { ...prev.profile, ...supplied } } : prev))
         }
       },
+      uploadAvatar: async (jpeg) => {
+        profileGen.current++
+        const url = await backend.uploadAvatar(jpeg)
+        profileGen.current++
+        if (userId) setLoadedProfile((prev) => (prev && prev.userId === userId ? { userId, profile: { ...prev.profile, avatarUrl: url } } : prev))
+      },
+      removeAvatar: async () => {
+        profileGen.current++
+        await backend.removeAvatar()
+        profileGen.current++
+        if (userId) setLoadedProfile((prev) => (prev && prev.userId === userId ? { userId, profile: { ...prev.profile, avatarUrl: null } } : prev))
+      },
       requireAccount,
+      requestProfileSetup,
       syncStatus,
       setSyncStatus,
       registerFlush,
@@ -154,13 +236,13 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
       restoreFailed,
       backend,
     }),
-    [registerFlush, flushSync, readProfile, backend, loaded, signedIn, session, profile, userId, requireAccount, syncStatus, restoreFailed],
+    [registerFlush, flushSync, readProfile, backend, loaded, signedIn, session, profile, profileStatus, reloadProfile, userId, requireAccount, requestProfileSetup, syncStatus, restoreFailed],
   )
 
   return (
     <AccountContext.Provider value={api}>
       {children}
-      {pending && <SignInSheet reason={pending.reason} onDone={() => finish(pending)} onClose={dismiss} />}
+      {pending && <SignInSheet reason={pending.reason} onDone={(created) => finish(pending, created)} onClose={dismiss} />}
     </AccountContext.Provider>
   )
 }

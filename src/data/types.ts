@@ -50,14 +50,37 @@ export interface Stop {
   name: string
   lat: number
   lng: number
+  /** Ids of the routes that serve this stop. */
   routes: string[]
+  /** Typical scheduled minutes from this stop to the University Centre, per route id. */
+  toCampus: Record<string, number>
+  /** True for the University Centre platforms themselves. */
+  campus?: boolean
+  /** Best trip with one change of bus, present only when it beats every direct ride from this stop. */
+  viaTransfer?: ViaTransfer
+}
+
+export interface ViaTransfer {
+  /** Ride plus the change, in minutes. */
+  minutes: number
+  firstRoute: string
+  secondRoute: string
+  /** The stop where the second bus is boarded. */
+  transferStop: { id: string; name: string }
+  /** Where the first bus lets you off, when that is a different stop (a short walk away). */
+  alightStop?: { id: string; name: string }
 }
 
 export interface Route {
   id: string
-  name: string
+  /** The feed's code, e.g. "99", "50 U" or "IroHarv". */
+  shortName: string
+  longName: string
+  /** What riders see: the number ("99", "50 U") or, for codes like "IroHarv", the long name. */
+  label: string
   color: string
-  path: LatLng[]
+  /** One line per piece of the route (MultiLineString). */
+  paths: LatLng[][]
 }
 
 export const HOUSING_TYPE_LABELS: Record<HousingType, string> = {
