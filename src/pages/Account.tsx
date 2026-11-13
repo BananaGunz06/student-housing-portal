@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import Avatar from '../components/Avatar'
 import AuthForms from '../components/AuthForms'
 import ProfileForm from '../components/ProfileForm'
 import type { Profile, ProfileUpdate } from '../lib/backend/types'
@@ -41,7 +40,7 @@ export default function Account() {
 
           <DetailsForm key={session.userId} profile={profile} onSave={saveProfile} />
 
-          <YourProfile name={profile?.displayName ?? ''} avatarUrl={profile?.avatarUrl ?? null} userId={session.userId} />
+          <YourProfile userId={session.userId} />
 
           <LogOut onSignOut={signOut} onFlush={flushSync} />
 
@@ -135,7 +134,7 @@ function LogOut({ onSignOut, onFlush }: { onSignOut: () => Promise<void>; onFlus
 }
 
 /** Student details and photo, shown on the public profile, with a link to see it. */
-function YourProfile({ name, avatarUrl, userId }: { name: string; avatarUrl: string | null; userId: string }) {
+function YourProfile({ userId }: { userId: string }) {
   const [saved, setSaved] = useState(false)
   useEffect(() => {
     if (!saved) return
@@ -144,12 +143,9 @@ function YourProfile({ name, avatarUrl, userId }: { name: string; avatarUrl: str
   }, [saved])
   return (
     <section aria-labelledby="your-profile" className="flex flex-col gap-4 rounded-2xl border border-line bg-card p-4">
-      <div className="flex items-center gap-3">
-        <Avatar name={name} url={avatarUrl} size="md" />
-        <h2 id="your-profile" className="font-display text-xl font-bold">
-          Your profile
-        </h2>
-      </div>
+      <h2 id="your-profile" className="font-display text-xl font-bold">
+        Your profile
+      </h2>
       <ProfileForm submitLabel="Save profile" onSaved={() => setSaved(true)} />
       {saved && (
         <p role="status" className="text-sm font-bold">
