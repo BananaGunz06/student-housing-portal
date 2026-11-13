@@ -24,6 +24,7 @@ export default function ProfileSetup() {
         <h1 className="font-display text-3xl font-bold">Set up your profile</h1>
         <p className="text-ink-soft">All of this is optional. You can change it any time in Account.</p>
         <ProfileForm
+          suggestBudget
           submitLabel="Save and continue"
           onSaved={done}
           secondary={

@@ -103,4 +103,48 @@ describe('Profile setup', () => {
     await user.click(await screen.findByRole('button', { name: 'Skip for now' }))
     await waitFor(() => expect(location().pathname).toBe('/results'))
   })
+  describe('when the profile cannot be loaded', () => {
+    function flaky() {
+      const base = createFakeBackend({ users: [student], sessionEmail: student.email })
+      const state = { fail: true }
+      const backend: Backend = { ...base, loadProfile: () => (state.fail ? Promise.reject(new Error('network')) : base.loadProfile()) }
+      return { backend, state }
+    }
+
+    test('Skip for now is still there and lands on /results', async () => {
+      setBudget(1000)
+      const { backend } = flaky()
+      const { user, location, navigate } = renderApp('/saved', { backend })
+      await sessionReady()
+      await act(async () => void navigate('/profile/setup'))
+      expect(await screen.findByText("Couldn't load your profile.")).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Skip for now' }))
+      await waitFor(() => expect(location().pathname).toBe('/results'))
+    })
+
+    test('Try again recovers once the backend works', async () => {
+      const { backend, state } = flaky()
+      const { user, navigate } = renderApp('/saved', { backend })
+      await sessionReady()
+      await act(async () => void navigate('/profile/setup'))
+      await screen.findByText("Couldn't load your profile.")
+      state.fail = false
+      await user.click(screen.getByRole('button', { name: 'Try again' }))
+      expect(await screen.findByLabelText('Bio')).toBeInTheDocument()
+      expect(screen.queryByText("Couldn't load your profile.")).toBeNull()
+    })
+  })
+
+  test('opened from a listing’s sheet, setup replaces that history entry', async () => {
+    setBudget(1000)
+    const { user, location, navigate } = renderApp('/results')
+    await sessionReady()
+    await act(async () => void navigate(`/listing/${listing.id}`))
+    await user.click(screen.getByRole('button', { name: `Save ${listing.title}` }))
+    await createIn(within(screen.getByRole('dialog', { name: 'Sign in' })), user)
+    await user.click(await screen.findByRole('button', { name: 'Skip for now' }))
+    await waitFor(() => expect(location().pathname).toBe(`/listing/${listing.id}`))
+    await act(async () => void navigate(-1))
+    expect(location().pathname).toBe('/results')
+  })
 })

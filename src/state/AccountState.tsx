@@ -10,6 +10,10 @@ export interface AccountApi {
   status: 'loading' | 'signed-out' | 'signed-in'
   session: Session | null
   profile: Profile | null
+  /** Whether `profile` has been read: still loading, failed (see `reloadProfile`), or ready. */
+  profileStatus: 'loading' | 'error' | 'ready'
+  /** Read the profile again after a failed load. */
+  reloadProfile(): void
   signIn(email: string, password: string): Promise<AuthResult>
   signUp(name: string, email: string, password: string): Promise<AuthResult>
   signOut(): Promise<void>
@@ -48,6 +52,8 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
   const [loaded, setLoaded] = useState(false)
   const [restoreFailed, setRestoreFailed] = useState(false)
   const [loadedProfile, setLoadedProfile] = useState<{ userId: string; profile: Profile } | null>(null)
+  /** The user whose profile read failed, if any. */
+  const [failedProfileFor, setFailedProfileFor] = useState<string | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
   const setupRef = useRef<{ returnTo?: string; at: number } | null>(null)
   const signedInRef = useRef(false)
@@ -101,9 +107,14 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
       backend
         .loadProfile()
         .then((p) => {
-          if (isLive() && gen === profileGen.current) setLoadedProfile({ userId: uid, profile: p })
+          if (isLive() && gen === profileGen.current) {
+            setLoadedProfile({ userId: uid, profile: p })
+            setFailedProfileFor(null)
+          }
         })
-        .catch(() => {})
+        .catch(() => {
+          if (isLive() && gen === profileGen.current) setFailedProfileFor(uid)
+        })
     },
     [backend],
   )
@@ -118,6 +129,12 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
 
   // Only the profile of the current user counts; a stale one is ignored.
   const profile = loadedProfile && loadedProfile.userId === userId ? loadedProfile.profile : null
+  const profileStatus = profile ? 'ready' : failedProfileFor !== null && failedProfileFor === userId ? 'error' : 'loading'
+  const reloadProfile = useCallback(() => {
+    if (!userId) return
+    setFailedProfileFor(null)
+    readProfile(userId, () => true)
+  }, [userId, readProfile])
   // The ref is the truth about which action is waiting; `pending` only drives rendering.
   const pendingRef = useRef<Pending | null>(null)
   const requireAccount = useCallback(
@@ -130,7 +147,9 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
     [signedIn],
   )
   const openSetup = useCallback(
-    (returnTo?: string) => navigate('/profile/setup', { state: returnTo ? { returnTo } : undefined }),
+    (returnTo?: string) =>
+      // Opened from the sign-in sheet on a page: replace that entry, so Back doesn't pass through setup twice.
+      navigate('/profile/setup', { state: returnTo ? { returnTo } : undefined, replace: returnTo !== undefined && returnTo === hereRef.current }),
     [navigate],
   )
   // The session reaches this provider a moment after sign-up resolves, so a request made before then
@@ -175,6 +194,8 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
       status: !loaded ? 'loading' : signedIn ? 'signed-in' : 'signed-out',
       session,
       profile,
+      profileStatus,
+      reloadProfile,
       signIn: (email, password) => backend.signIn(email, password),
       signUp: (name, email, password) => backend.signUp(name, email, password),
       signOut: () => backend.signOut(),
@@ -215,7 +236,7 @@ export function AccountProvider({ backend, children }: { backend: Backend; child
       restoreFailed,
       backend,
     }),
-    [registerFlush, flushSync, readProfile, backend, loaded, signedIn, session, profile, userId, requireAccount, requestProfileSetup, syncStatus, restoreFailed],
+    [registerFlush, flushSync, readProfile, backend, loaded, signedIn, session, profile, profileStatus, reloadProfile, userId, requireAccount, requestProfileSetup, syncStatus, restoreFailed],
   )
 
   return (

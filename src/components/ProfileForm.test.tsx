@@ -20,7 +20,7 @@ beforeEach(() => {
   vi.mocked(avatar.toSquareJpeg).mockResolvedValue(new Blob(['jpeg'], { type: 'image/jpeg' }))
 })
 
-async function setup(details: Partial<StudentDetails> = {}, name = student.name) {
+async function setup(details: Partial<StudentDetails> = {}, name = student.name, formProps: { suggestBudget?: boolean } = {}) {
   const backend = createFakeBackend({ users: [{ ...student, name }], sessionEmail: student.email })
   await backend.saveProfile({ displayName: name, ...details })
   const onSaved = vi.fn()
@@ -29,7 +29,7 @@ async function setup(details: Partial<StudentDetails> = {}, name = student.name)
     <MemoryRouter>
       <AccountProvider backend={backend}>
         <AppStateProvider>
-          <ProfileForm submitLabel="Save profile" onSaved={onSaved} secondary={<button type="button">Skip for now</button>} />
+          <ProfileForm {...formProps} submitLabel="Save profile" onSaved={onSaved} secondary={<button type="button">Skip for now</button>} />
         </AppStateProvider>
       </AccountProvider>
     </MemoryRouter>,
@@ -53,14 +53,24 @@ describe('ProfileForm fields', () => {
     expect(screen.getByRole('button', { name: 'Skip for now' })).toBeInTheDocument()
   })
 
-  test('budget starts from the search budget when the profile has none, and is only saved on submit', async () => {
+  test('with suggestBudget, the budget starts from the search budget when the profile has none, and is only saved on submit', async () => {
     setBudget(900)
-    const { backend, onSaved, user } = await setup()
+    const { backend, onSaved, user } = await setup({}, student.name, { suggestBudget: true })
     expect(screen.getByLabelText('Monthly budget')).toHaveValue(900)
     expect((await backend.loadProfile()).budget).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Save profile' }))
     await waitFor(() => expect(onSaved).toHaveBeenCalled())
     expect((await backend.loadProfile()).budget).toBe(900)
+  })
+
+  test('without suggestBudget, a profile with no budget starts empty and a bio-only save keeps it so', async () => {
+    setBudget(900)
+    const { backend, onSaved, user } = await setup()
+    expect(screen.getByLabelText('Monthly budget')).toHaveValue(null)
+    await user.type(screen.getByLabelText('Bio'), 'Hi')
+    await user.click(screen.getByRole('button', { name: 'Save profile' }))
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    expect((await backend.loadProfile()).budget).toBeNull()
   })
 
   test('an empty budget saves as no budget', async () => {
@@ -94,6 +104,21 @@ describe('ProfileForm fields', () => {
     expect(screen.getByLabelText('Monthly budget')).toHaveAttribute('aria-invalid', 'true')
     expect(onSaved).not.toHaveBeenCalled()
     expect((await backend.loadProfile()).budget).toBeNull()
+  })
+
+  test('a validation failure moves focus to the first invalid field', async () => {
+    const { user } = await setup()
+    await user.type(screen.getByLabelText('Monthly budget'), '5')
+    await user.click(screen.getByRole('button', { name: 'Save profile' }))
+    await waitFor(() => expect(screen.getByLabelText('Monthly budget')).toHaveFocus())
+  })
+
+  test('the roommates switch says On or Off in words', async () => {
+    const { user } = await setup()
+    const sw = screen.getByRole('switch', { name: 'Looking for roommates' })
+    expect(screen.getByText('Off')).toBeInTheDocument()
+    await user.click(sw)
+    expect(screen.getByText('On')).toBeInTheDocument()
   })
 })
 
@@ -195,5 +220,27 @@ describe('ProfileForm photo', () => {
     await user.click(await screen.findByRole('button', { name: 'Remove photo' }))
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Remove photo' })).toBeNull())
     expect(backend.avatarOf(student.email)).toBeNull()
+  })
+
+  test('removing shows Removing…, not Uploading…', async () => {
+    const { backend, user } = await setup()
+    await user.upload(screen.getByLabelText('Photo'), png())
+    const remove = await screen.findByRole('button', { name: 'Remove photo' })
+    let release!: () => void
+    const real = backend.removeAvatar
+    backend.removeAvatar = () => new Promise<void>((r) => (release = () => void real().then(r)))
+    await user.click(remove)
+    expect(await screen.findByText('Removing…')).toBeInTheDocument()
+    expect(screen.queryByText('Uploading…')).toBeNull()
+    release()
+    await waitFor(() => expect(screen.queryByText('Removing…')).toBeNull())
+  })
+
+  test('a refused file is cleared from the input', async () => {
+    const { user } = await setup()
+    const input = screen.getByLabelText('Photo') as HTMLInputElement
+    await user.upload(input, png(10, 'image/gif'))
+    await screen.findByText('Choose a JPEG, PNG or WebP image.')
+    expect(input.files).toHaveLength(0)
   })
 })

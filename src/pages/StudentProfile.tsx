@@ -13,7 +13,7 @@ type Result = { id: string; viewer: string; retry: number; student: StudentCard 
 
 export default function StudentProfile() {
   const { id = '' } = useParams()
-  const { status, session, profile, backend } = useAccount()
+  const { status, session, profile, profileStatus, reloadProfile, backend } = useAccount()
   const [retry, setRetry] = useState(0)
   const [result, setResult] = useState<Result | null>(null)
   const viewer = session?.userId ?? ''
@@ -45,6 +45,17 @@ export default function StudentProfile() {
   if (own && session && profile) {
     student = { ...profile, id: session.userId }
   } else if (own) {
+    if (profileStatus === 'error') {
+      return (
+        <Page>
+          {back}
+          <p className="mt-4">Couldn't load your profile.</p>
+          <button type="button" className={`${buttonClass} mt-3`} onClick={reloadProfile}>
+            Try again
+          </button>
+        </Page>
+      )
+    }
     return <Page>Loading…</Page>
   } else {
     const r = result && result.id === id && result.viewer === viewer && result.retry === retry ? result : null

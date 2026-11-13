@@ -94,4 +94,16 @@ describe('Student profile page', () => {
     const { location } = renderApp('/students/abc')
     await waitFor(() => expect(location().pathname).toBe('/account'))
   })
+
+  test('own profile that cannot load shows an error with Try again instead of Loading…', async () => {
+    const base = createFakeBackend({ users: [me], sessionEmail: me.email })
+    const state = { fail: true }
+    const backend = { ...base, loadProfile: () => (state.fail ? Promise.reject(new Error('network')) : base.loadProfile()) }
+    const user = (await base.getSession())!
+    const { user: ui } = renderApp(`/students/${user.userId}`, { backend })
+    expect(await screen.findByText("Couldn't load your profile.")).toBeInTheDocument()
+    state.fail = false
+    await ui.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Test Student' })).toBeInTheDocument()
+  })
 })
