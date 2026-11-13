@@ -28,7 +28,6 @@ Small items found in review and deliberately not fixed. None blocks merging.
 - (step 4) StudentProfile.test hard-codes 'user-2'
 - (step 4) offset paging skips a student when someone leaves the list between pages (needs keyset paging)
 - After deleting an account the app calls log-out for the deleted user and gets a 403 (visible only in the browser console).
-- Account → Your profile shows the photo twice (next to the heading and in the form).
-- README screenshots predate the new bottom bar, Students tab and real bus routes.
 - Bus routes: no test at exactly 151 m (uses 220 m); the data credit links to the Mobility Database page, not a City of Guelph licence page.
 - Part 2 (direct messages) must extend the photo read rule to students who share a conversation.
+- Listing mini-map: the "This place" label and the "≈N min walk" label overlap when the stop is close to the listing.
