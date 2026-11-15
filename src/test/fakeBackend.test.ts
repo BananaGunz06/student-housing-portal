@@ -176,6 +176,13 @@ describe('fake backend', () => {
     expect(second.nextCursor).toBeNull()
   })
 
+  it('listStudents treats a malformed cursor as the first page', async () => {
+    const b = createFakeBackend({ students: ['A', 'B', 'C'].map((n) => seeker(n)) })
+    await b.signUp('Me', 'me@example.com', 'password1')
+    const first = names(await b.listStudents({ limit: 30 }))
+    for (const bad of ['|user-3', '5|', '|', 'abc|user-3', 'nobar']) expect(names(await b.listStudents({ limit: 30, after: bad }))).toEqual(first)
+  })
+
   it('getStudent returns null for a student not looking for roommates', async () => {
     const b = createFakeBackend({ students: [seeker('Ann'), seeker('Hidden', { lookingForRoommates: false })] })
     await b.signUp('Me', 'me@example.com', 'password1')

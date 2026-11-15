@@ -307,6 +307,29 @@ describe('Account page', () => {
     expect(within(section).getByText('Saved')).toBe(region.firstElementChild ?? region)
   })
 
+  test('a second save inside the 4 s window empties the Saved region and fills it again; idle regions have no children', async () => {
+    const { user } = renderApp('/account', { signedInAs: student.email })
+    await sessionReady()
+    const section = await screen.findByRole('region', { name: 'Your profile' })
+    const region = within(section).getByRole('link', { name: 'View my profile' }).previousElementSibling as HTMLElement
+    expect(region.childNodes).toHaveLength(0)
+    expect(region.className).toContain('empty:-mt-4')
+    const form = screen.getByLabelText('Name').closest('form')!
+    expect(within(form).getByRole('status').childNodes).toHaveLength(0)
+    expect(within(form).getByRole('status').className).toContain('empty:-mt-4')
+    await within(section).findByLabelText('Bio')
+    await user.click(within(section).getByRole('button', { name: 'Save profile' }))
+    await waitFor(() => expect(region).toHaveTextContent('Saved'))
+    const seen: string[] = []
+    const obs = new MutationObserver(() => seen.push(region.textContent ?? ''))
+    obs.observe(region, { childList: true, characterData: true, subtree: true })
+    await user.click(within(section).getByRole('button', { name: 'Save profile' }))
+    await waitFor(() => expect(seen).toContain('Saved'))
+    obs.disconnect()
+    expect(seen).toContain('')
+    expect(seen.indexOf('')).toBeLessThan(seen.lastIndexOf('Saved'))
+  })
+
   test('Saved is announced from a status region that is there before saving (details form)', async () => {
     const { user } = renderApp('/account', { signedInAs: student.email })
     await sessionReady()

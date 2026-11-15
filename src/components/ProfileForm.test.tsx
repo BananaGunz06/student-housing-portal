@@ -315,3 +315,14 @@ describe('ProfileForm follow-ups', () => {
     await waitFor(() => expect(region).toBeEmptyDOMElement())
   })
 })
+
+describe('ProfileForm idle status regions', () => {
+  test('the photo and name-note regions are empty and cancel their column gap', async () => {
+    await setup()
+    const [photo, name] = screen.getAllByRole('status')
+    for (const [region, cls] of [[photo, 'empty:-mt-2'], [name, 'empty:-mt-1']] as const) {
+      expect(region.childNodes).toHaveLength(0)
+      expect(region.className).toContain(cls)
+    }
+  })
+})

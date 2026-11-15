@@ -167,9 +167,10 @@ export function createFakeBackend(opts: FakeOptions = {}): Backend & {
         .filter((u) => inBand(u.profile.budget, q.band ?? 'any'))
         .sort((a, b) => b.updatedAt - a.updatedAt || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
       const cut = q.after ? q.after.indexOf('|') : -1
-      const at = cut < 0 ? NaN : Number(q.after!.slice(0, cut))
+      const atText = cut < 0 ? '' : q.after!.slice(0, cut)
+      const at = atText === '' ? NaN : Number(atText)
       const afterId = cut < 0 ? '' : q.after!.slice(cut + 1)
-      const rest = Number.isNaN(at) ? all : all.filter((u) => u.updatedAt < at || (u.updatedAt === at && u.id < afterId))
+      const rest = Number.isNaN(at) || afterId === '' ? all : all.filter((u) => u.updatedAt < at || (u.updatedAt === at && u.id < afterId))
       const page = rest.slice(0, q.limit)
       const last = page[page.length - 1]
       return { students: page.map(cardOf), nextCursor: rest.length > q.limit && last ? `${last.updatedAt}|${last.id}` : null }

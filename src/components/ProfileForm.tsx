@@ -55,6 +55,8 @@ function Field({
 interface FormProps {
   submitLabel: string
   onSaved: () => void
+  /** Called when a save starts, after the fields passed validation. */
+  onSaveStart?: () => void
   secondary?: ReactNode
   /** Start an empty budget from the search budget (the setup screen). Account starts from the stored value only. */
   suggestBudget?: boolean
@@ -85,7 +87,7 @@ export default function ProfileForm(props: FormProps) {
   )
 }
 
-function LoadedForm({ submitLabel, onSaved, secondary, suggestBudget = false, profile }: FormProps & { profile: Profile }) {
+function LoadedForm({ submitLabel, onSaved, onSaveStart, secondary, suggestBudget = false, profile }: FormProps & { profile: Profile }) {
   const { saveProfile, uploadAvatar, removeAvatar } = useAccount()
   const { budget: searchBudget } = useAppState()
   const [bio, setBio] = useState(profile.bio ?? '')
@@ -163,6 +165,7 @@ function LoadedForm({ submitLabel, onSaved, secondary, suggestBudget = false, pr
       requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
       return
     }
+    onSaveStart?.()
     setSaving(true)
     setSaveError(false)
     try {
@@ -207,7 +210,7 @@ function LoadedForm({ submitLabel, onSaved, secondary, suggestBudget = false, pr
             )}
           </div>
         </div>
-        <span role="status" className="text-sm text-ink-soft">
+        <span role="status" className="text-sm text-ink-soft empty:-mt-2">
           {photoBusy === null ? '' : photoBusy === 'removing' ? 'Removing…' : 'Uploading…'}
         </span>
         {photoError && (
@@ -293,7 +296,7 @@ function LoadedForm({ submitLabel, onSaved, secondary, suggestBudget = false, pr
         <span id={`${switchId}-hint`} className="text-sm text-ink-soft">
           Shows your profile in the Students tab.
         </span>
-        <div role="status">
+        <div role="status" className="empty:-mt-1">
           {nameMissing && (
             <span id={`${switchId}-name`} className="text-sm font-bold text-over">
               Add your name to appear in Students.

@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 import { campusCommute } from '../lib/commute'
 import { getAll } from '../lib/listingsRepo'
 import MiniMap from './MiniMap'
-import { labelsCrowd } from './mapShared'
+import { labelsCrowd, MINI_MAP_BOUNDS_OPTIONS } from './mapShared'
 
 const listings = getAll()
 const withMode = (pred: (c: ReturnType<typeof campusCommute>) => boolean) =>
@@ -77,6 +77,13 @@ describe('MiniMap', () => {
     expect(strokes(container)).toHaveLength(1)
     expect(dashed(container)).toHaveLength(1)
     expect(container.querySelector('.leaflet-tooltip')).toHaveTextContent(`≈${c.minutes} min walk`)
+  })
+})
+
+describe('MiniMap padding', () => {
+  test('leaves room at the bottom for the walk label and the credit bar', () => {
+    expect(MINI_MAP_BOUNDS_OPTIONS.paddingBottomRight[1]).toBeGreaterThanOrEqual(90)
+    expect(MINI_MAP_BOUNDS_OPTIONS.paddingTopLeft).toEqual([40, 64])
   })
 })
 

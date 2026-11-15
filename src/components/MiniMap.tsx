@@ -4,14 +4,14 @@ import { CAMPUS } from '../data/campus'
 import type { Listing } from '../data/types'
 import type { Commute } from '../lib/commute'
 import CommuteLayers from './CommuteLayers'
-import { campusIcon, commutePoints, homeIcon, TILE_ATTRIBUTION, TILE_URL } from './mapShared'
+import { campusIcon, commutePoints, homeIcon, MINI_MAP_BOUNDS_OPTIONS, TILE_ATTRIBUTION, TILE_URL } from './mapShared'
 
 /** The listing, its nearest stop with a dashed walking line, the route, and campus. */
 export default function MiniMap({ listing, commute }: { listing: Listing; commute: Commute }) {
   return (
     <MapContainer
       bounds={commutePoints(listing, commute)}
-      boundsOptions={{ paddingTopLeft: [40, 64], paddingBottomRight: [40, 32] }}
+      boundsOptions={MINI_MAP_BOUNDS_OPTIONS}
       zoomControl={false}
       scrollWheelZoom={false}
       className="h-full w-full"
