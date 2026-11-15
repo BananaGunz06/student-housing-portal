@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type { StudentDetails } from '../lib/backend/types'
@@ -242,5 +242,76 @@ describe('ProfileForm photo', () => {
     await user.upload(input, png(10, 'image/gif'))
     await screen.findByText('Choose a JPEG, PNG or WebP image.')
     expect(input.files).toHaveLength(0)
+  })
+})
+
+describe('ProfileForm follow-ups', () => {
+  test('the bio counter counts the trimmed text and is not red at 300 plus trailing spaces', async () => {
+    await setup({ bio: `${'x'.repeat(300)}   ` })
+    const counter = screen.getByText(/ \/ 300$/)
+    expect(counter).toHaveTextContent('300 / 300')
+    expect(counter.className).not.toMatch(/text-over/)
+  })
+
+  test('the counter turns red past 300 trimmed characters', async () => {
+    await setup({ bio: 'x'.repeat(301) })
+    const counter = screen.getByText(/ \/ 300$/)
+    expect(counter).toHaveTextContent('301 / 300')
+    expect(counter.className).toMatch(/text-over/)
+  })
+
+  test('after the signed-in student switches, the fields show the second student', async () => {
+    const other = { email: 'omar@example.com', password: 'password123', name: 'Omar Haddad' }
+    const backend = createFakeBackend({ users: [student, other], sessionEmail: student.email })
+    await backend.saveProfile({ displayName: student.name, bio: 'Maya bio', program: 'Biology' })
+    await backend.signOut()
+    await backend.signIn(other.email, other.password)
+    await backend.saveProfile({ displayName: other.name, bio: 'Omar bio', program: 'Physics' })
+    await backend.signOut()
+    await backend.signIn(student.email, student.password)
+    render(
+      <MemoryRouter>
+        <AccountProvider backend={backend}>
+          <AppStateProvider>
+            <ProfileForm submitLabel="Save profile" onSaved={() => {}} />
+          </AppStateProvider>
+        </AccountProvider>
+      </MemoryRouter>,
+    )
+    await waitFor(() => expect(screen.getByLabelText('Bio')).toHaveValue('Maya bio'))
+    await act(async () => {
+      await backend.signIn(other.email, other.password)
+    })
+    await waitFor(() => expect(screen.getByLabelText('Bio')).toHaveValue('Omar bio'))
+    expect(screen.getByLabelText('Program')).toHaveValue('Physics')
+  })
+
+  test('with the switch on and no name, the switch is described by the name note, inside a status region', async () => {
+    await setup({ lookingForRoommates: true }, '')
+    const note = screen.getByText('Add your name to appear in Students.')
+    expect(note.closest('[role="status"]')).not.toBeNull()
+    expect(screen.getByRole('switch', { name: 'Looking for roommates' })).toHaveAccessibleDescription(/Add your name to appear in Students\./)
+  })
+
+  test('the name-note status region is there before the note is, and the switch is not described by it', async () => {
+    const { user } = await setup({ lookingForRoommates: false }, '')
+    const sw = screen.getByRole('switch', { name: 'Looking for roommates' })
+    expect(sw).not.toHaveAccessibleDescription(/Add your name/)
+    const regions = screen.getAllByRole('status')
+    await user.click(sw)
+    expect(screen.getByText('Add your name to appear in Students.').closest('[role="status"]')).toBe(regions[regions.length - 1])
+  })
+
+  test('the photo status region exists before an upload starts and gets the text', async () => {
+    let finish!: () => void
+    vi.mocked(avatar.toSquareJpeg).mockReturnValue(new Promise((r) => (finish = () => r(new Blob(['x'])))))
+    const { user } = await setup()
+    const region = screen.getAllByRole('status')[0]
+    expect(region).toBeEmptyDOMElement()
+    await user.upload(screen.getByLabelText('Photo'), png())
+    await waitFor(() => expect(region).toHaveTextContent('Uploading…'))
+    expect(within(region).getByText('Uploading…')).toBeInTheDocument()
+    finish()
+    await waitFor(() => expect(region).toBeEmptyDOMElement())
   })
 })

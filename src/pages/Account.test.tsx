@@ -293,6 +293,32 @@ describe('Account page', () => {
     expect(await backend.loadProfile()).toMatchObject({ bio: 'Hello there' })
   })
 
+  test('Saved is announced from a status region that is there before saving (Your profile)', async () => {
+    const { user } = renderApp('/account', { signedInAs: student.email })
+    await sessionReady()
+    const section = await screen.findByRole('region', { name: 'Your profile' })
+    // The "Saved" region sits just before the "View my profile" link.
+    const region = within(section).getByRole('link', { name: 'View my profile' }).previousElementSibling as HTMLElement
+    expect(region).toHaveAttribute('role', 'status')
+    expect(region).toBeEmptyDOMElement()
+    await user.type(await within(section).findByLabelText('Bio'), 'Hello')
+    await user.click(within(section).getByRole('button', { name: 'Save profile' }))
+    await waitFor(() => expect(region).toHaveTextContent('Saved'))
+    expect(within(section).getByText('Saved')).toBe(region.firstElementChild ?? region)
+  })
+
+  test('Saved is announced from a status region that is there before saving (details form)', async () => {
+    const { user } = renderApp('/account', { signedInAs: student.email })
+    await sessionReady()
+    await waitFor(() => expect(screen.getByLabelText('Name')).toHaveValue(student.name))
+    const form = screen.getByLabelText('Name').closest('form')!
+    const region = within(form).getByRole('status')
+    expect(region).toBeEmptyDOMElement()
+    await user.click(within(form).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(region).toHaveTextContent('Saved'))
+    expect(within(form).getByRole('status')).toBe(region)
+  })
+
   test('a failed save says so and keeps the typed details', async () => {
     const base = createFakeBackend({ users: [student], sessionEmail: student.email })
     const backend: Backend = { ...base, saveProfile: async () => Promise.reject(new Error('network')) }

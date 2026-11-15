@@ -1,8 +1,10 @@
-import { CircleMarker, Polyline, Tooltip } from 'react-leaflet'
+import { useEffect, useState } from 'react'
+import { CircleMarker, Polyline, Tooltip, useMap } from 'react-leaflet'
 import { CAMPUS } from '../data/campus'
 import { STOPS } from '../data/transit'
 import type { Listing } from '../data/types'
 import type { Commute } from '../lib/commute'
+import { labelsCrowd } from './mapShared'
 
 type Pt = [number, number]
 
@@ -23,6 +25,18 @@ export default function CommuteLayers({ listing, commute }: { listing: Listing; 
   const alightId = commute.mode === 'bus' ? commute.transfer?.alightStop?.id : undefined
   const alightStop = alightId ? STOPS.find((s) => s.id === alightId) : undefined
   const alightPt: Pt | null = alightStop ? [alightStop.lat, alightStop.lng] : null
+
+  // When the stop is close on screen, the walk label would cover the "This place" pin: move it below the line.
+  const map = useMap()
+  const [crowded, setCrowded] = useState(false)
+  const [homeLat, homeLng] = home
+  const [toLat, toLng] = walkTo
+  useEffect(() => {
+    const measure = () => setCrowded(labelsCrowd(map.latLngToContainerPoint([homeLat, homeLng]), map.latLngToContainerPoint([toLat, toLng])))
+    measure()
+    map.on('zoomend', measure)
+    return () => void map.off('zoomend', measure)
+  }, [map, homeLat, homeLng, toLat, toLng])
 
   return (
     <>
@@ -65,7 +79,7 @@ export default function CommuteLayers({ listing, commute }: { listing: Listing; 
         positions={[home, walkTo]}
         pathOptions={{ color: '#1c2a35', weight: 4, dashArray: '2 9', lineCap: 'round' }}
       >
-        <Tooltip permanent direction="center">
+        <Tooltip key={crowded ? 'below' : 'center'} permanent direction={crowded ? 'bottom' : 'center'} offset={crowded ? [0, 18] : [0, 0]}>
           ≈{walkMin} min walk
         </Tooltip>
       </Polyline>

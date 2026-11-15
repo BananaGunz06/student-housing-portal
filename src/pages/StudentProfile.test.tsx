@@ -65,6 +65,20 @@ describe('Student profile page', () => {
     expect(screen.queryByText('Off Student')).toBeNull()
   })
 
+  test('loading and error states have a Student profile heading, and the error is an alert', async () => {
+    const base = createFakeBackend({ users: [me], students: [maya], sessionEmail: me.email })
+    const id = base.idOf('maya@example.com')
+    let fail = true
+    const backend = { ...base, getStudent: async (x: string) => (fail ? Promise.reject(new Error('network')) : base.getStudent(x)) }
+    const { unmount } = renderApp(`/students/${id}`, { backend })
+    expect(screen.getByRole('heading', { level: 1, name: 'Student profile' })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Loading…')
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load this profile.")
+    expect(screen.getByRole('heading', { level: 1, name: 'Student profile' })).toBeInTheDocument()
+    fail = false
+    unmount()
+  })
+
   test('own profile shows Edit profile even with roommates off', async () => {
     const backend = createFakeBackend({ users: [me], sessionEmail: me.email })
     await backend.saveProfile({ displayName: me.name, bio: 'My own bio', lookingForRoommates: false })

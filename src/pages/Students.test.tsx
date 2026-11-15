@@ -142,6 +142,18 @@ describe('Students page', () => {
     expect(screen.getAllByRole('link', { name: /^Student / })).toHaveLength(3)
   })
 
+  test('the filters have exactly their own names, and loading and errors are announced', async () => {
+    const base = createFakeBackend({ users: [me], students: seekers, sessionEmail: me.email })
+    const { user } = setup('/students', seekers, base)
+    expect(screen.getByRole('status')).toHaveTextContent(/^Loading/)
+    await screen.findByRole('link', { name: /^Maya Chen/ })
+    expect(screen.getByLabelText('Move-in term')).toHaveAccessibleName('Move-in term')
+    expect(screen.getByLabelText('Budget')).toHaveAccessibleName('Budget')
+    base.setOffline(true)
+    await user.selectOptions(screen.getByLabelText('Budget'), '600-800')
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load students.")
+  })
+
   test('empty state copy', async () => {
     setup('/students', [])
     expect(

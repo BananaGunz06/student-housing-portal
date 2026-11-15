@@ -147,11 +147,9 @@ function YourProfile({ userId }: { userId: string }) {
         Your profile
       </h2>
       <ProfileForm submitLabel="Save profile" onSaved={() => setSaved(true)} />
-      {saved && (
-        <p role="status" className="text-sm font-bold">
-          Saved
-        </p>
-      )}
+      <p role="status" className="text-sm font-bold">
+        {saved ? 'Saved' : ''}
+      </p>
       <Link to={`/students/${userId}`} className="inline-flex min-h-11 items-center self-start font-bold underline">
         View my profile
       </Link>
@@ -240,11 +238,9 @@ function DetailsForm({ profile, onSave }: { profile: Profile | null; onSave: (p:
           onChange={(e) => change('phone', e.target.value)}
         />
       </div>
-      {result === 'saved' && (
-        <p role="status" className="text-sm font-bold">
-          Saved
-        </p>
-      )}
+      <p role="status" className="text-sm font-bold">
+        {result === 'saved' ? 'Saved' : ''}
+      </p>
       {result === 'failed' && (
         <p role="alert" className="text-sm font-bold text-over">
           Couldn’t save. Check your connection and try again.

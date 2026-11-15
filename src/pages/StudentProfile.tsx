@@ -32,7 +32,7 @@ export default function StudentProfile() {
     }
   }, [backend, fetching, id, viewer, retry])
 
-  if (status === 'loading') return <Page>Loading…</Page>
+  if (status === 'loading') return <LoadingPage />
   if (status === 'signed-out') return <Navigate to="/account" replace />
 
   const back = (
@@ -49,22 +49,28 @@ export default function StudentProfile() {
       return (
         <Page>
           {back}
-          <p className="mt-4">Couldn't load your profile.</p>
+          <h1 className={`mt-4 ${headingClass}`}>Student profile</h1>
+          <p role="alert" className="mt-4">
+            Couldn't load your profile.
+          </p>
           <button type="button" className={`${buttonClass} mt-3`} onClick={reloadProfile}>
             Try again
           </button>
         </Page>
       )
     }
-    return <Page>Loading…</Page>
+    return <LoadingPage />
   } else {
     const r = result && result.id === id && result.viewer === viewer && result.retry === retry ? result : null
-    if (!r) return <Page>Loading…</Page>
+    if (!r) return <LoadingPage />
     if ('error' in r) {
       return (
         <Page>
           {back}
-          <p className="mt-4">Couldn't load this profile.</p>
+          <h1 className={`mt-4 ${headingClass}`}>Student profile</h1>
+          <p role="alert" className="mt-4">
+            Couldn't load this profile.
+          </p>
           <button type="button" className={`${buttonClass} mt-3`} onClick={() => (setResult(null), setRetry((n) => n + 1))}>
             Try again
           </button>
@@ -75,7 +81,7 @@ export default function StudentProfile() {
       return (
         <Page>
           {back}
-          <h1 className="mt-4 font-display text-2xl font-bold">This profile isn't available.</h1>
+          <h1 className={`mt-4 ${headingClass}`}>This profile isn't available.</h1>
         </Page>
       )
     }
@@ -106,6 +112,20 @@ export default function StudentProfile() {
           Edit profile
         </Link>
       )}
+    </Page>
+  )
+}
+
+const headingClass = 'font-display text-2xl font-bold'
+
+/** The page while the student is loading: a heading and a live "Loading…". */
+function LoadingPage() {
+  return (
+    <Page>
+      <h1 className={headingClass}>Student profile</h1>
+      <p role="status" className="mt-4 text-ink-soft">
+        Loading…
+      </p>
     </Page>
   )
 }

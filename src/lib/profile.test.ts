@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { profileSummary, termLabel, upcomingTerms, validateDetails } from './profile'
+import { profileSummary, termLabel, termOptionsWith, upcomingTerms, validateDetails } from './profile'
 
 const empty = { bio: '', program: '', year: null, moveInTerm: null, budget: null, lookingForRoommates: false }
 
@@ -44,4 +44,30 @@ describe('profileSummary', () => {
     expect(profileSummary({ program: '', year: 'grad' })).toBe('Graduate')
   })
   test('neither', () => expect(profileSummary({ program: ' ', year: null })).toBe(''))
+})
+
+describe('termOptionsWith', () => {
+  const terms = upcomingTerms(new Date('2026-11-12'))
+  const values = (list: { value: string }[]) => list.map((t) => t.value)
+
+  test('a far-future stored term goes last', () => {
+    const out = termOptionsWith(terms, '2031-winter')
+    expect(values(out)).toEqual([...values(terms), '2031-winter'])
+    expect(out.at(-1)).toEqual({ value: '2031-winter', label: 'Winter 2031' })
+  })
+  test('a past stored term goes first', () => {
+    expect(values(termOptionsWith(terms, '2025-fall'))).toEqual(['2025-fall', ...values(terms)])
+  })
+  test('a stored term between the options goes in date order', () => {
+    const gap = terms.filter((t) => t.value !== '2028-winter')
+    expect(values(termOptionsWith(gap, '2028-winter'))).toEqual(values(terms))
+  })
+  test('seasons order winter, summer, fall within a year', () => {
+    const out = termOptionsWith([{ value: '2027-winter', label: 'Winter 2027' }, { value: '2027-fall', label: 'Fall 2027' }], '2027-summer')
+    expect(values(out)).toEqual(['2027-winter', '2027-summer', '2027-fall'])
+  })
+  test('a present term or null leaves the list unchanged', () => {
+    expect(termOptionsWith(terms, terms[2].value)).toEqual(terms)
+    expect(termOptionsWith(terms, null)).toEqual(terms)
+  })
 })
