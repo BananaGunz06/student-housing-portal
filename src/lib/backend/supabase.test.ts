@@ -1,7 +1,27 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { shouldForwardAuthEvent } from './authEvents'
 import { bandBounds } from './bands'
-import { cloudStateToRow, dataError, isUuid, profileUpdateRow, mapAuthError, rowToCloudState } from './supabase'
+import { cloudStateToRow, createSupabaseBackend, cursorFilter, dataError, isUuid, makeCursor, parseCursor, profileUpdateRow, mapAuthError, rowToCloudState } from './supabase'
+
+// A recording stand-in for the Supabase client: every query call is logged, and awaiting a query gives `rows`.
+const h = vi.hoisted(() => ({ calls: [] as [string, unknown[]][], signed: [] as string[][], rows: [] as Record<string, unknown>[] }))
+vi.mock('@supabase/supabase-js', () => {
+  const query: Record<string, unknown> = {}
+  const record = (name: string) => (...args: unknown[]) => (h.calls.push([name, args]), query)
+  for (const n of ['select', 'eq', 'neq', 'gt', 'lte', 'or', 'order', 'limit']) query[n] = record(n)
+  query.then = (ok: (v: unknown) => unknown) => Promise.resolve({ data: h.rows, error: null }).then(ok)
+  return {
+    createClient: () => ({
+      auth: { getSession: async () => ({ data: { session: { user: { id: 'me' } } }, error: null }) },
+      from: () => query,
+      storage: {
+        from: () => ({
+          createSignedUrls: async (paths: string[]) => (h.signed.push(paths), { data: paths.map((p) => ({ path: p, signedUrl: `https://signed.example.com/${p}`, error: null })), error: null }),
+        }),
+      },
+    }),
+  }
+})
 
 describe('mapAuthError', () => {
   it('maps invalid credentials', () => {
@@ -104,5 +124,57 @@ describe('isUuid', () => {
     expect(isUuid('abc')).toBe(false)
     expect(isUuid('')).toBe(false)
     expect(isUuid('3f2b8c1e-9d4a-4e5b-8a6c-1d2e3f4a5b6c; drop')).toBe(false)
+  })
+})
+
+describe('Students list cursor', () => {
+  const ID_A = '11111111-1111-4111-8111-111111111111'
+  const ID_B = '22222222-2222-4222-8222-222222222222'
+  const TIME = '2026-11-15T10:20:30.123456+00:00'
+
+  it('keeps the database time exactly and round-trips', () => {
+    expect(makeCursor(TIME, ID_A)).toBe(`${TIME}|${ID_A}`)
+    expect(parseCursor(makeCursor(TIME, ID_A))).toEqual({ updatedAt: TIME, id: ID_A })
+  })
+  it('builds the filter with the raw quoted time and the id', () => {
+    expect(cursorFilter({ updatedAt: TIME, id: ID_A })).toBe(`updated_at.lt."${TIME}",and(updated_at.eq."${TIME}",id.lt.${ID_A})`)
+  })
+  it('treats a malformed cursor as none', () => {
+    for (const bad of [undefined, '', 'nope', `${TIME}`, `${TIME}|not-a-uuid`, `x|${ID_A}`, `${TIME}"),id.gt.0,or(a.eq.1|${ID_A}`]) expect(parseCursor(bad)).toBeNull()
+  })
+
+  describe('listStudents', () => {
+    const row = (id: string, updated_at: string, avatar_path: string | null) => ({ id, updated_at, display_name: 'N', avatar_path })
+    beforeEach(() => {
+      h.calls.length = 0
+      h.signed.length = 0
+    })
+    const backend = () => createSupabaseBackend('https://x.example.com', 'publishable')
+
+    it('asks for limit + 1 newest-first with the id tie-break, signs only the kept rows, and returns the last kept row as the cursor', async () => {
+      h.rows = [row(ID_B, TIME, 'b/avatar.jpg'), row(ID_A, '2026-11-15T10:20:29+00:00', 'a/avatar.jpg')]
+      const r = await backend().listStudents({ limit: 1 })
+      expect(h.calls).toContainEqual(['limit', [2]])
+      expect(h.calls.filter(([n]) => n === 'order').map(([, a]) => a)).toEqual([
+        ['updated_at', { ascending: false }],
+        ['id', { ascending: false }],
+      ])
+      expect(h.calls.some(([n]) => n === 'or')).toBe(false)
+      expect(h.signed).toEqual([['b/avatar.jpg']])
+      expect(r.students.map((s) => s.id)).toEqual([ID_B])
+      expect(r.nextCursor).toBe(`${TIME}|${ID_B}`)
+    })
+    it('has no cursor on the last page', async () => {
+      h.rows = [row(ID_B, TIME, null)]
+      expect((await backend().listStudents({ limit: 1 })).nextCursor).toBeNull()
+    })
+    it('adds the cursor filter for `after`, and ignores a malformed one', async () => {
+      h.rows = []
+      await backend().listStudents({ limit: 30, after: `${TIME}|${ID_A}` })
+      expect(h.calls).toContainEqual(['or', [`updated_at.lt."${TIME}",and(updated_at.eq."${TIME}",id.lt.${ID_A})`]])
+      h.calls.length = 0
+      await backend().listStudents({ limit: 30, after: 'garbage' })
+      expect(h.calls.some(([n]) => n === 'or')).toBe(false)
+    })
   })
 })

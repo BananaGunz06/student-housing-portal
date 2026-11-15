@@ -16,7 +16,7 @@ interface FakeUser {
 export interface FakeOptions {
   users?: { email: string; password: string; name: string; state?: Partial<CloudState> }[]
   /** Extra users who show up in the students list (password "password1"). */
-  students?: (Partial<StudentDetails> & { email: string; name: string })[]
+  students?: (Partial<StudentDetails> & { email: string; name: string; /** Force the "last saved" clock value, to make ties. */ updatedAt?: number })[]
   offline?: boolean
   /** Start signed in as this user (must exist in `users`). */
   sessionEmail?: string
@@ -37,6 +37,8 @@ export function createFakeBackend(opts: FakeOptions = {}): Backend & {
   setOffline(v: boolean): void
   stateOf(email: string): CloudState
   avatarOf(email: string): Blob | null
+  /** The generated id of a user (so tests don't hard-code `user-N`). */
+  idOf(email: string): string
 } {
   const users = new Map<string, FakeUser>()
   let n = 0
@@ -52,8 +54,9 @@ export function createFakeBackend(opts: FakeOptions = {}): Backend & {
     return u
   }
   for (const u of opts.users ?? []) addUser(u.email, u.password, newProfile(u.name), structuredClone({ ...emptyState(), ...u.state }))
-  for (const { email, name, ...details } of opts.students ?? []) {
-    addUser(email, 'password1', { ...newProfile(name), ...details }, emptyState())
+  for (const { email, name, updatedAt, ...details } of opts.students ?? []) {
+    const u = addUser(email, 'password1', { ...newProfile(name), ...details }, emptyState())
+    if (updatedAt !== undefined) u.updatedAt = updatedAt
   }
   let offline = opts.offline ?? false
   let current: FakeUser | null = opts.sessionEmail ? (users.get(key(opts.sessionEmail)) ?? null) : null
@@ -91,6 +94,11 @@ export function createFakeBackend(opts: FakeOptions = {}): Backend & {
     avatarOf(email) {
       const id = idByEmail.get(key(email))
       return (id && photos.get(id)) || null
+    },
+    idOf(email) {
+      const id = idByEmail.get(key(email))
+      if (!id) throw new Error('no such user')
+      return id
     },
     async getSession() {
       // A real session read takes a network round trip; the initial event lands well before it.
@@ -157,8 +165,14 @@ export function createFakeBackend(opts: FakeOptions = {}): Backend & {
         .filter((u) => visible(u) && u.id !== me.id)
         .filter((u) => !q.moveInTerm || u.profile.moveInTerm === q.moveInTerm)
         .filter((u) => inBand(u.profile.budget, q.band ?? 'any'))
-        .sort((a, b) => b.updatedAt - a.updatedAt)
-      return { students: all.slice(q.offset, q.offset + q.limit).map(cardOf), hasMore: all.length > q.offset + q.limit }
+        .sort((a, b) => b.updatedAt - a.updatedAt || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
+      const cut = q.after ? q.after.indexOf('|') : -1
+      const at = cut < 0 ? NaN : Number(q.after!.slice(0, cut))
+      const afterId = cut < 0 ? '' : q.after!.slice(cut + 1)
+      const rest = Number.isNaN(at) ? all : all.filter((u) => u.updatedAt < at || (u.updatedAt === at && u.id < afterId))
+      const page = rest.slice(0, q.limit)
+      const last = page[page.length - 1]
+      return { students: page.map(cardOf), nextCursor: rest.length > q.limit && last ? `${last.updatedAt}|${last.id}` : null }
     },
     async getStudent(id) {
       await signedIn()

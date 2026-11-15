@@ -7,6 +7,7 @@ import type { AuthError, AuthResult, Backend, CloudState, Profile, ProfileUpdate
 const AVATARS = 'avatars'
 const SIGNED_URL_SECONDS = 3600
 const PROFILE_COLUMNS = 'id, display_name, bio, program, year, move_in_term, budget, looking_for_roommates, avatar_path'
+const LIST_COLUMNS = `${PROFILE_COLUMNS}, updated_at`
 
 interface ErrLike {
   message?: unknown
@@ -63,6 +64,28 @@ export function profileUpdateRow(p: ProfileUpdate) {
   }
 }
 
+const TIMESTAMP = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}(:?\d{2})?)$/
+
+/** The Students list cursor: the row's `updated_at` exactly as the database returned it, then its id. */
+export function makeCursor(updatedAt: string, id: string): string {
+  return `${updatedAt}|${id}`
+}
+
+/** Null when the cursor isn't one we made (so a bad value acts as the first page and can't alter the filter). */
+export function parseCursor(after: string | undefined): { updatedAt: string; id: string } | null {
+  if (!after) return null
+  const i = after.indexOf('|')
+  if (i < 0) return null
+  const updatedAt = after.slice(0, i)
+  const id = after.slice(i + 1)
+  return TIMESTAMP.test(updatedAt) && isUuid(id) ? { updatedAt, id } : null
+}
+
+/** PostgREST `or` filter for the rows strictly after the cursor (newest first, id descending). The time is quoted because it contains `+` and `:`. */
+export function cursorFilter(c: { updatedAt: string; id: string }): string {
+  return `updated_at.lt."${c.updatedAt}",and(updated_at.eq."${c.updatedAt}",id.lt.${c.id})`
+}
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** Postgres rejects ids that aren't UUIDs, so check before asking. */
@@ -72,6 +95,7 @@ export function isUuid(id: string): boolean {
 
 export interface ProfileRow {
   id: string
+  updated_at?: string
   display_name: string | null
   bio: string | null
   program: string | null
@@ -242,7 +266,7 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       const me = await userId()
       let query = sb
         .from('profiles')
-        .select(PROFILE_COLUMNS)
+        .select(LIST_COLUMNS)
         .eq('looking_for_roommates', true)
         .neq('display_name', '')
         .neq('id', me)
@@ -250,14 +274,21 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       const { over, upTo } = bandBounds(q.band ?? 'any')
       if (over !== undefined) query = query.gt('budget', over)
       if (upTo !== undefined) query = query.lte('budget', upTo)
+      const cursor = parseCursor(q.after)
+      if (cursor) query = query.or(cursorFilter(cursor))
       // One extra row tells us whether another page exists.
-      const { data, error } = await query.order('updated_at', { ascending: false }).range(q.offset, q.offset + q.limit)
+      const { data, error } = await query
+        .order('updated_at', { ascending: false })
+        .order('id', { ascending: false })
+        .limit(q.limit + 1)
       if (error) throw dataError(error)
       const rows = data ?? []
-      const urls = await signedUrls(rows.map((r) => r.avatar_path))
+      const kept = rows.slice(0, q.limit)
+      const urls = await signedUrls(kept.map((r) => r.avatar_path))
+      const last = kept[kept.length - 1]
       return {
-        students: rows.slice(0, q.limit).map((r, i) => rowToStudentCard(r, urls[i])),
-        hasMore: rows.length > q.limit,
+        students: kept.map((r, i) => rowToStudentCard(r, urls[i])),
+        nextCursor: rows.length > q.limit && last?.updated_at ? makeCursor(last.updated_at, last.id) : null,
       }
     },
     async getStudent(id) {

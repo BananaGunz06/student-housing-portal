@@ -40,7 +40,8 @@ export interface StudentCard extends StudentDetails {
 export interface StudentQuery {
   moveInTerm?: string
   band?: BudgetBand
-  offset: number
+  /** The `nextCursor` of the previous page; omitted for the first page. */
+  after?: string
   limit: number
 }
 
@@ -66,7 +67,7 @@ export interface Backend {
   saveProfile(p: ProfileUpdate): Promise<void>
   loadState(): Promise<CloudState>
   saveState(s: CloudState): Promise<void>
-  listStudents(q: StudentQuery): Promise<{ students: StudentCard[]; hasMore: boolean }>
+  listStudents(q: StudentQuery): Promise<{ students: StudentCard[]; nextCursor: string | null }>  // null = no more
   /** Null when the student is hidden, unknown or deleted. */
   getStudent(id: string): Promise<StudentCard | null>
   /** Stores the photo, saves its path, and returns a fresh signed link. */

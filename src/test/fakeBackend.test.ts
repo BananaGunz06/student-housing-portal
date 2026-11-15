@@ -80,7 +80,7 @@ describe('fake backend', () => {
     lookingForRoommates: true,
     ...extra,
   })
-  const q = { offset: 0, limit: 30 }
+  const q = { limit: 30 }
 
   it('listStudents returns only roommate seekers with a name, never the viewer, newest first', async () => {
     const b = createFakeBackend({
@@ -123,15 +123,57 @@ describe('fake backend', () => {
     expect(await names('600-800', '2027-fall')).toEqual([601, 800])
   })
 
-  it('listStudents pages 30 with hasMore', async () => {
+  const names = (r: { students: { displayName: string }[] }) => r.students.map((s) => s.displayName)
+
+  it('listStudents pages 30 then 1, and nextCursor is null at the end', async () => {
     const b = createFakeBackend({ students: Array.from({ length: 31 }, (_, i) => seeker(`Student ${i}`)) })
     await b.signUp('Me', 'me@example.com', 'password1')
-    const first = await b.listStudents({ offset: 0, limit: 30 })
+    const first = await b.listStudents({ limit: 30 })
     expect(first.students).toHaveLength(30)
-    expect(first.hasMore).toBe(true)
-    const second = await b.listStudents({ offset: 30, limit: 30 })
+    expect(first.nextCursor).not.toBeNull()
+    const second = await b.listStudents({ limit: 30, after: first.nextCursor! })
     expect(second.students).toHaveLength(1)
-    expect(second.hasMore).toBe(false)
+    expect(second.nextCursor).toBeNull()
+  })
+
+  it('listStudents: a student who leaves the list after page 1 does not make anyone on page 2 get skipped', async () => {
+    const b = createFakeBackend({ students: ['A', 'B', 'C', 'D', 'E'].map((n) => seeker(n)) })
+    await b.signUp('Me', 'me@example.com', 'password1')
+    const first = await b.listStudents({ limit: 2 })
+    expect(names(first)).toEqual(['E', 'D'])
+    // D (on page 1) switches roommates off.
+    await b.signOut()
+    await b.signIn('d@example.com', 'password1')
+    await b.saveProfile({ displayName: 'D', lookingForRoommates: false })
+    await b.signOut()
+    await b.signIn('me@example.com', 'password1')
+    const second = await b.listStudents({ limit: 2, after: first.nextCursor! })
+    expect(names(second)).toEqual(['C', 'B'])
+    expect(names(await b.listStudents({ limit: 2, after: second.nextCursor! }))).toEqual(['A'])
+  })
+
+  it('listStudents: a student who joins after page 1 is not shown again on page 2', async () => {
+    const b = createFakeBackend({ students: ['A', 'B', 'C'].map((n) => seeker(n)) })
+    await b.signUp('Me', 'me@example.com', 'password1')
+    const first = await b.listStudents({ limit: 2 })
+    expect(names(first)).toEqual(['C', 'B'])
+    await b.signOut()
+    await b.signUp('New', 'new@example.com', 'password1')
+    await b.saveProfile({ displayName: 'New', lookingForRoommates: true })
+    await b.signOut()
+    await b.signIn('me@example.com', 'password1')
+    const second = await b.listStudents({ limit: 2, after: first.nextCursor! })
+    expect(names(second)).toEqual(['A'])
+  })
+
+  it('listStudents: students with the same clock value across a page boundary each appear once', async () => {
+    const b = createFakeBackend({ students: ['A', 'B', 'C', 'D'].map((n) => seeker(n, { updatedAt: 100 })) })
+    await b.signUp('Me', 'me@example.com', 'password1')
+    const first = await b.listStudents({ limit: 2 })
+    const second = await b.listStudents({ limit: 2, after: first.nextCursor! })
+    const all = [...names(first), ...names(second)]
+    expect([...all].sort()).toEqual(['A', 'B', 'C', 'D'])
+    expect(second.nextCursor).toBeNull()
   })
 
   it('getStudent returns null for a student not looking for roommates', async () => {
@@ -139,7 +181,7 @@ describe('fake backend', () => {
     await b.signUp('Me', 'me@example.com', 'password1')
     const [ann] = (await b.listStudents(q)).students
     expect((await b.getStudent(ann.id))?.displayName).toBe('Ann')
-    expect(await b.getStudent('user-2')).toBeNull()
+    expect(await b.getStudent(b.idOf('hidden@example.com'))).toBeNull()
     expect(await b.getStudent('nobody')).toBeNull()
   })
 

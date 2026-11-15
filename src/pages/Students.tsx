@@ -10,7 +10,7 @@ const EMPTY_COPY = "No students are looking for roommates yet. Switch on 'Lookin
 const selectClass = 'min-h-11 w-full rounded-xl border-2 border-line bg-card px-3 py-2'
 const buttonClass = 'inline-flex min-h-11 items-center justify-center rounded-full bg-ink px-6 font-bold text-white'
 
-type Result = { key: string; students: Student[]; hasMore: boolean } | { key: string; error: true }
+type Result = { key: string; students: Student[]; nextCursor: string | null } | { key: string; error: true }
 
 export default function Students() {
   const { status, backend, profile, session } = useAccount()
@@ -44,7 +44,7 @@ export default function Students() {
     if (!signedIn) return
     let current = true
     backend
-      .listStudents({ moveInTerm: term || undefined, band, offset: 0, limit: PAGE })
+      .listStudents({ moveInTerm: term || undefined, band, limit: PAGE })
       .then((r) => current && (setResult({ key, ...r }), setMore('idle')))
       .catch(() => current && setResult({ key, error: true }))
     return () => {
@@ -56,10 +56,10 @@ export default function Students() {
     const asked = keyRef.current
     setMore('loading')
     try {
-      const next = await backend.listStudents({ moveInTerm: term || undefined, band, offset: r.students.length, limit: PAGE })
+      const next = await backend.listStudents({ moveInTerm: term || undefined, band, after: r.nextCursor ?? undefined, limit: PAGE })
       if (!mounted.current || keyRef.current !== asked) return
       const seen = new Set(r.students.map((x) => x.id))
-      setResult({ key: asked, students: [...r.students, ...next.students.filter((x) => !seen.has(x.id))], hasMore: next.hasMore })
+      setResult({ key: asked, students: [...r.students, ...next.students.filter((x) => !seen.has(x.id))], nextCursor: next.nextCursor })
       setMore('idle')
     } catch {
       if (mounted.current && keyRef.current === asked) setMore('error')
@@ -127,7 +127,7 @@ export default function Students() {
             ))}
           </ul>
           {more === 'error' && <p className="mt-3 text-sm">Couldn't load more students.</p>}
-          {r.hasMore && (
+          {r.nextCursor && (
             <button type="button" className={`${buttonClass} mt-4`} disabled={more === 'loading'} onClick={() => void showMore(r)}>
               {more === 'loading' ? 'Loading…' : 'Show more'}
             </button>

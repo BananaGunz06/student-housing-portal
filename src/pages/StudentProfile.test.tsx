@@ -20,7 +20,7 @@ const maya = {
 }
 
 async function idOf(backend: ReturnType<typeof createFakeBackend>, name: string) {
-  const { students } = await backend.listStudents({ offset: 0, limit: 50 })
+  const { students } = await backend.listStudents({ limit: 50 })
   return students.find((s) => s.displayName === name)!.id
 }
 
@@ -60,8 +60,7 @@ describe('Student profile page', () => {
 
   test('a real student with roommates off shows "This profile isn\'t available."', async () => {
     const backend = createFakeBackend({ users: [me], students: [{ email: 'off@example.com', name: 'Off Student', lookingForRoommates: false }], sessionEmail: me.email })
-    // Ids are sequential: user-1 is the viewer, user-2 is the student with the switch off.
-    renderApp('/students/user-2', { backend })
+    renderApp(`/students/${backend.idOf('off@example.com')}`, { backend })
     expect(await screen.findByText("This profile isn't available.")).toBeInTheDocument()
     expect(screen.queryByText('Off Student')).toBeNull()
   })
