@@ -293,6 +293,55 @@ describe('Account page', () => {
     expect(await backend.loadProfile()).toMatchObject({ bio: 'Hello there' })
   })
 
+  test('Saved is announced from a status region that is there before saving (Your profile)', async () => {
+    const { user } = renderApp('/account', { signedInAs: student.email })
+    await sessionReady()
+    const section = await screen.findByRole('region', { name: 'Your profile' })
+    // The "Saved" region sits just before the "View my profile" link.
+    const region = within(section).getByRole('link', { name: 'View my profile' }).previousElementSibling as HTMLElement
+    expect(region).toHaveAttribute('role', 'status')
+    expect(region).toBeEmptyDOMElement()
+    await user.type(await within(section).findByLabelText('Bio'), 'Hello')
+    await user.click(within(section).getByRole('button', { name: 'Save profile' }))
+    await waitFor(() => expect(region).toHaveTextContent('Saved'))
+    expect(within(section).getByText('Saved')).toBe(region.firstElementChild ?? region)
+  })
+
+  test('a second save inside the 4 s window empties the Saved region and fills it again; idle regions have no children', async () => {
+    const { user } = renderApp('/account', { signedInAs: student.email })
+    await sessionReady()
+    const section = await screen.findByRole('region', { name: 'Your profile' })
+    const region = within(section).getByRole('link', { name: 'View my profile' }).previousElementSibling as HTMLElement
+    expect(region.childNodes).toHaveLength(0)
+    expect(region.className).toContain('empty:-mt-4')
+    const form = screen.getByLabelText('Name').closest('form')!
+    expect(within(form).getByRole('status').childNodes).toHaveLength(0)
+    expect(within(form).getByRole('status').className).toContain('empty:-mt-4')
+    await within(section).findByLabelText('Bio')
+    await user.click(within(section).getByRole('button', { name: 'Save profile' }))
+    await waitFor(() => expect(region).toHaveTextContent('Saved'))
+    const seen: string[] = []
+    const obs = new MutationObserver(() => seen.push(region.textContent ?? ''))
+    obs.observe(region, { childList: true, characterData: true, subtree: true })
+    await user.click(within(section).getByRole('button', { name: 'Save profile' }))
+    await waitFor(() => expect(seen).toContain('Saved'))
+    obs.disconnect()
+    expect(seen).toContain('')
+    expect(seen.indexOf('')).toBeLessThan(seen.lastIndexOf('Saved'))
+  })
+
+  test('Saved is announced from a status region that is there before saving (details form)', async () => {
+    const { user } = renderApp('/account', { signedInAs: student.email })
+    await sessionReady()
+    await waitFor(() => expect(screen.getByLabelText('Name')).toHaveValue(student.name))
+    const form = screen.getByLabelText('Name').closest('form')!
+    const region = within(form).getByRole('status')
+    expect(region).toBeEmptyDOMElement()
+    await user.click(within(form).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(region).toHaveTextContent('Saved'))
+    expect(within(form).getByRole('status')).toBe(region)
+  })
+
   test('a failed save says so and keeps the typed details', async () => {
     const base = createFakeBackend({ users: [student], sessionEmail: student.email })
     const backend: Backend = { ...base, saveProfile: async () => Promise.reject(new Error('network')) }

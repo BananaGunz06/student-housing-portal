@@ -1,7 +1,7 @@
 import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { checkPhoto, toSquareJpeg, type PhotoError } from '../lib/avatar'
 import type { Profile, StudentDetails, StudyYear } from '../lib/backend/types'
-import { BIO_MAX, termLabel, upcomingTerms, validateDetails, YEARS } from '../lib/profile'
+import { BIO_MAX, termOptionsWith, upcomingTerms, validateDetails, YEARS } from '../lib/profile'
 import { useAccount } from '../state/AccountState'
 import { useAppState } from '../state/AppState'
 import Avatar from './Avatar'
@@ -55,6 +55,8 @@ function Field({
 interface FormProps {
   submitLabel: string
   onSaved: () => void
+  /** Called when a save starts, after the fields passed validation. */
+  onSaveStart?: () => void
   secondary?: ReactNode
   /** Start an empty budget from the search budget (the setup screen). Account starts from the stored value only. */
   suggestBudget?: boolean
@@ -62,9 +64,10 @@ interface FormProps {
 
 /** The student details and photo, read and saved through the account. Name and phone are edited elsewhere. */
 export default function ProfileForm(props: FormProps) {
-  const { profile, profileStatus, reloadProfile } = useAccount()
+  const { profile, profileStatus, reloadProfile, session } = useAccount()
   // The fields start from the stored profile, so wait until it has loaded. The secondary action stays available.
-  if (profile) return <LoadedForm {...props} profile={profile} />
+  // The key restarts the fields when a different student signs in.
+  if (profile) return <LoadedForm key={session?.userId} {...props} profile={profile} />
   return (
     <div className="flex flex-col items-start gap-3">
       {profileStatus === 'error' ? (
@@ -84,7 +87,7 @@ export default function ProfileForm(props: FormProps) {
   )
 }
 
-function LoadedForm({ submitLabel, onSaved, secondary, suggestBudget = false, profile }: FormProps & { profile: Profile }) {
+function LoadedForm({ submitLabel, onSaved, onSaveStart, secondary, suggestBudget = false, profile }: FormProps & { profile: Profile }) {
   const { saveProfile, uploadAvatar, removeAvatar } = useAccount()
   const { budget: searchBudget } = useAppState()
   const [bio, setBio] = useState(profile.bio ?? '')
@@ -104,7 +107,7 @@ function LoadedForm({ submitLabel, onSaved, secondary, suggestBudget = false, pr
   const photoId = useId()
   const switchId = useId()
 
-  const termOptions = term && !terms.some((t) => t.value === term) ? [{ value: term, label: termLabel(term) }, ...terms] : terms
+  const termOptions = termOptionsWith(terms, term)
 
   async function choosePhoto(file: File | undefined) {
     if (!file) return
@@ -162,6 +165,7 @@ function LoadedForm({ submitLabel, onSaved, secondary, suggestBudget = false, pr
       requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
       return
     }
+    onSaveStart?.()
     setSaving(true)
     setSaveError(false)
     try {
@@ -206,11 +210,9 @@ function LoadedForm({ submitLabel, onSaved, secondary, suggestBudget = false, pr
             )}
           </div>
         </div>
-        {photoBusy && (
-          <span role="status" className="text-sm text-ink-soft">
-            {photoBusy === 'removing' ? 'Removing…' : 'Uploading…'}
-          </span>
-        )}
+        <span role="status" className="text-sm text-ink-soft empty:-mt-2">
+          {photoBusy === null ? '' : photoBusy === 'removing' ? 'Removing…' : 'Uploading…'}
+        </span>
         {photoError && (
           <span role="alert" className="text-sm font-bold text-over">
             {photoError}
@@ -222,8 +224,8 @@ function LoadedForm({ submitLabel, onSaved, secondary, suggestBudget = false, pr
         label="Bio"
         error={errors.bio}
         aside={
-          <span className={`self-end text-sm ${bio.length > BIO_MAX ? 'font-bold text-over' : 'text-ink-soft'}`}>
-            {`${bio.length} / ${BIO_MAX}`}
+          <span className={`self-end text-sm ${bio.trim().length > BIO_MAX ? 'font-bold text-over' : 'text-ink-soft'}`}>
+            {`${bio.trim().length} / ${BIO_MAX}`}
           </span>
         }
       >
@@ -278,7 +280,7 @@ function LoadedForm({ submitLabel, onSaved, secondary, suggestBudget = false, pr
               role="switch"
               checked={roommates}
               aria-labelledby={`${switchId}-label`}
-              aria-describedby={`${switchId}-hint`}
+              aria-describedby={nameMissing ? `${switchId}-hint ${switchId}-name` : `${switchId}-hint`}
               onChange={(e) => setRoommates(e.target.checked)}
               className="peer sr-only"
             />
@@ -294,7 +296,13 @@ function LoadedForm({ submitLabel, onSaved, secondary, suggestBudget = false, pr
         <span id={`${switchId}-hint`} className="text-sm text-ink-soft">
           Shows your profile in the Students tab.
         </span>
-        {nameMissing && <span className="text-sm font-bold text-over">Add your name to appear in Students.</span>}
+        <div role="status" className="empty:-mt-1">
+          {nameMissing && (
+            <span id={`${switchId}-name`} className="text-sm font-bold text-over">
+              Add your name to appear in Students.
+            </span>
+          )}
+        </div>
       </div>
 
       {saveError && (

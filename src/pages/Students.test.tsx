@@ -75,11 +75,19 @@ describe('Students page', () => {
     expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull()
   })
 
-  test('Show more does not repeat a student when the list shifts between pages', async () => {
+  test('Show more does not repeat a student if a page overlaps the one before', async () => {
     const many = Array.from({ length: 31 }, (_, i) => ({ email: `s${i}@example.com`, name: `Student ${String(i).padStart(2, '0')}`, lookingForRoommates: true }))
     const base = createFakeBackend({ users: [me], students: many, sessionEmail: me.email })
-    // Someone new joined after page 1 loaded: page 2 starts one place earlier.
-    const backend: Backend = { ...base, listStudents: (q) => base.listStudents(q.offset > 0 ? { ...q, offset: q.offset - 1 } : q) }
+    // A page that repeats someone already shown (the guard in the screen drops the repeat).
+    const backend: Backend = {
+      ...base,
+      listStudents: async (q) => {
+        const page = await base.listStudents(q)
+        if (!q.after) return page
+        const top = await base.listStudents({ ...q, after: undefined, limit: 1 })
+        return { ...page, students: [...top.students, ...page.students] }
+      },
+    }
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { user } = setup('/students', many, backend)
     await screen.findAllByRole('link', { name: /^Student / })
@@ -97,7 +105,7 @@ describe('Students page', () => {
     const base = createFakeBackend({ users: [me], students: many, sessionEmail: me.email })
     let release: () => void = () => {}
     const gate = new Promise<void>((r) => (release = r))
-    const backend: Backend = { ...base, listStudents: async (q) => (q.offset > 0 ? (await gate, base.listStudents(q)) : base.listStudents(q)) }
+    const backend: Backend = { ...base, listStudents: async (q) => (q.after ? (await gate, base.listStudents(q)) : base.listStudents(q)) }
     const { user } = setup('/students', many, backend)
     await screen.findAllByRole('link', { name: /^Student / })
     await user.click(screen.getByRole('button', { name: 'Show more' }))
@@ -106,6 +114,44 @@ describe('Students page', () => {
     await act(async () => release())
     expect(screen.getByText('No students match these filters.')).toBeInTheDocument()
     expect(screen.queryAllByRole('link', { name: /^Student / })).toHaveLength(0)
+  })
+
+  test('Show more goes away when there is no next cursor, and a page of already-shown students does not leave it stuck', async () => {
+    const many = Array.from({ length: 3 }, (_, i) => ({ email: `s${i}@example.com`, name: `Student ${i}`, lookingForRoommates: true }))
+    const base = createFakeBackend({ users: [me], students: many, sessionEmail: me.email })
+    const cursors: (string | undefined)[] = []
+    let calls = 0
+    const backend: Backend = {
+      ...base,
+      listStudents: async (q) => {
+        cursors.push(q.after)
+        const page = await base.listStudents({ ...q, after: undefined, limit: 3 })
+        calls += 1
+        // Page 1 claims there is more; page 2 repeats the same students (all duplicates) and says there is more again; page 3 ends.
+        return { students: page.students, nextCursor: calls < 3 ? `c${calls}` : null }
+      },
+    }
+    const { user } = setup('/students', many, backend)
+    await screen.findAllByRole('link', { name: /^Student / })
+    await user.click(screen.getByRole('button', { name: 'Show more' }))
+    await waitFor(() => expect(cursors).toEqual([undefined, 'c1']))
+    expect(await screen.findByRole('button', { name: 'Show more' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'Show more' }))
+    await waitFor(() => expect(cursors).toEqual([undefined, 'c1', 'c2']))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull())
+    expect(screen.getAllByRole('link', { name: /^Student / })).toHaveLength(3)
+  })
+
+  test('the filters have exactly their own names, and loading and errors are announced', async () => {
+    const base = createFakeBackend({ users: [me], students: seekers, sessionEmail: me.email })
+    const { user } = setup('/students', seekers, base)
+    expect(screen.getByRole('status')).toHaveTextContent(/^Loading/)
+    await screen.findByRole('link', { name: /^Maya Chen/ })
+    expect(screen.getByLabelText('Move-in term')).toHaveAccessibleName('Move-in term')
+    expect(screen.getByLabelText('Budget')).toHaveAccessibleName('Budget')
+    base.setOffline(true)
+    await user.selectOptions(screen.getByLabelText('Budget'), '600-800')
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load students.")
   })
 
   test('empty state copy', async () => {
@@ -177,7 +223,7 @@ describe('Students page', () => {
     expect(within(nav).getByRole('link', { name: 'Places' })).toHaveAttribute('aria-current', 'page')
     await act(async () => navigate(`/listing/${getAll()[0].id}`))
     expect(within(nav).getByRole('link', { name: 'Places' })).toHaveAttribute('aria-current', 'page')
-    const { students } = await backend.listStudents({ offset: 0, limit: 5 })
+    const { students } = await backend.listStudents({ limit: 5 })
     await act(async () => navigate(`/students/${students[0].id}`))
     expect(within(nav).getByRole('link', { name: 'Students' })).toHaveAttribute('aria-current', 'page')
     expect(within(nav).getByRole('link', { name: 'Places' })).not.toHaveAttribute('aria-current')

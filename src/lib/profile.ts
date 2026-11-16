@@ -53,6 +53,21 @@ export function termLabel(value: string): string {
   return `${SEASON_LABEL[season as keyof typeof SEASON_LABEL] ?? season} ${year}`
 }
 
+/** Year, then winter < summer < fall. */
+function termRank(value: string): number {
+  const [year, season] = value.split('-')
+  return Number(year) * 3 + SEASONS.indexOf(season as (typeof SEASONS)[number])
+}
+
+/** The upcoming terms, with a stored term that isn't among them placed in date order. */
+export function termOptionsWith(terms: { value: string; label: string }[], stored: string | null): { value: string; label: string }[] {
+  if (!stored || terms.some((t) => t.value === stored)) return terms
+  const rank = termRank(stored)
+  const at = terms.findIndex((t) => termRank(t.value) > rank)
+  const extra = { value: stored, label: termLabel(stored) }
+  return at < 0 ? [...terms, extra] : [...terms.slice(0, at), extra, ...terms.slice(at)]
+}
+
 export function validateDetails(d: StudentDetails): Partial<Record<keyof StudentDetails, string>> {
   const errors: Partial<Record<keyof StudentDetails, string>> = {}
   if (d.bio.length > BIO_MAX) errors.bio = `Keep your bio to ${BIO_MAX} characters.`

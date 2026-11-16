@@ -48,3 +48,17 @@ export function stopLabel(s: { name: string; routes: string[] }): string {
   names.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
   return `${s.name} · Route${names.length === 1 ? '' : 's'} ${names.join(', ')}`
 }
+
+/** Room around the mini-map's fit; the bottom leaves space for the walk label drawn below the line and the credit bar. */
+export const MINI_MAP_BOUNDS_OPTIONS: { paddingTopLeft: [number, number]; paddingBottomRight: [number, number] } = {
+  paddingTopLeft: [40, 64],
+  paddingBottomRight: [40, 96],
+}
+
+/** Under this many screen pixels the walk label would sit on top of the "This place" pin. */
+export const CROWDED_PX = 90
+
+/** True when two points on the screen are close enough for their labels to overlap. */
+export function labelsCrowd(a: { x: number; y: number }, b: { x: number; y: number }, limit = CROWDED_PX): boolean {
+  return Math.hypot(a.x - b.x, a.y - b.y) < limit
+}

@@ -20,7 +20,7 @@ const maya = {
 }
 
 async function idOf(backend: ReturnType<typeof createFakeBackend>, name: string) {
-  const { students } = await backend.listStudents({ offset: 0, limit: 50 })
+  const { students } = await backend.listStudents({ limit: 50 })
   return students.find((s) => s.displayName === name)!.id
 }
 
@@ -60,10 +60,23 @@ describe('Student profile page', () => {
 
   test('a real student with roommates off shows "This profile isn\'t available."', async () => {
     const backend = createFakeBackend({ users: [me], students: [{ email: 'off@example.com', name: 'Off Student', lookingForRoommates: false }], sessionEmail: me.email })
-    // Ids are sequential: user-1 is the viewer, user-2 is the student with the switch off.
-    renderApp('/students/user-2', { backend })
+    renderApp(`/students/${backend.idOf('off@example.com')}`, { backend })
     expect(await screen.findByText("This profile isn't available.")).toBeInTheDocument()
     expect(screen.queryByText('Off Student')).toBeNull()
+  })
+
+  test('loading and error states have a Student profile heading, and the error is an alert', async () => {
+    const base = createFakeBackend({ users: [me], students: [maya], sessionEmail: me.email })
+    const id = base.idOf('maya@example.com')
+    let fail = true
+    const backend = { ...base, getStudent: async (x: string) => (fail ? Promise.reject(new Error('network')) : base.getStudent(x)) }
+    const { unmount } = renderApp(`/students/${id}`, { backend })
+    expect(screen.getByRole('heading', { level: 1, name: 'Student profile' })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Loading…')
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load this profile.")
+    expect(screen.getByRole('heading', { level: 1, name: 'Student profile' })).toBeInTheDocument()
+    fail = false
+    unmount()
   })
 
   test('own profile shows Edit profile even with roommates off', async () => {

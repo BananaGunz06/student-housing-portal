@@ -1,12 +1,7 @@
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import ProfileForm from '../components/ProfileForm'
+import { safeReturnTo } from '../lib/safeReturnTo'
 import { useAccount } from '../state/AccountState'
-
-/** Only an in-app path counts: one slash, not `//host`. */
-function safeReturnTo(state: unknown): string {
-  const r = (state as { returnTo?: unknown } | null)?.returnTo
-  return typeof r === 'string' && r.startsWith('/') && !r.startsWith('//') ? r : '/results'
-}
 
 /** Optional profile setup, shown once after creating an account. */
 export default function ProfileSetup() {

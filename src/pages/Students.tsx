@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import StudentCard from '../components/StudentCard'
 import type { BudgetBand, StudentCard as Student } from '../lib/backend/types'
@@ -10,7 +10,7 @@ const EMPTY_COPY = "No students are looking for roommates yet. Switch on 'Lookin
 const selectClass = 'min-h-11 w-full rounded-xl border-2 border-line bg-card px-3 py-2'
 const buttonClass = 'inline-flex min-h-11 items-center justify-center rounded-full bg-ink px-6 font-bold text-white'
 
-type Result = { key: string; students: Student[]; hasMore: boolean } | { key: string; error: true }
+type Result = { key: string; students: Student[]; nextCursor: string | null } | { key: string; error: true }
 
 export default function Students() {
   const { status, backend, profile, session } = useAccount()
@@ -22,6 +22,8 @@ export default function Students() {
   const band = (BUDGET_BANDS.find((b) => b.value === bandParam && b.value !== 'any')?.value ?? 'any') as BudgetBand
   const filtered = term !== '' || band !== 'any'
 
+  const termId = useId()
+  const bandId = useId()
   const [retry, setRetry] = useState(0)
   const [result, setResult] = useState<Result | null>(null)
   const [more, setMore] = useState<'idle' | 'loading' | 'error'>('idle')
@@ -44,7 +46,7 @@ export default function Students() {
     if (!signedIn) return
     let current = true
     backend
-      .listStudents({ moveInTerm: term || undefined, band, offset: 0, limit: PAGE })
+      .listStudents({ moveInTerm: term || undefined, band, limit: PAGE })
       .then((r) => current && (setResult({ key, ...r }), setMore('idle')))
       .catch(() => current && setResult({ key, error: true }))
     return () => {
@@ -56,10 +58,10 @@ export default function Students() {
     const asked = keyRef.current
     setMore('loading')
     try {
-      const next = await backend.listStudents({ moveInTerm: term || undefined, band, offset: r.students.length, limit: PAGE })
+      const next = await backend.listStudents({ moveInTerm: term || undefined, band, after: r.nextCursor ?? undefined, limit: PAGE })
       if (!mounted.current || keyRef.current !== asked) return
       const seen = new Set(r.students.map((x) => x.id))
-      setResult({ key: asked, students: [...r.students, ...next.students.filter((x) => !seen.has(x.id))], hasMore: next.hasMore })
+      setResult({ key: asked, students: [...r.students, ...next.students.filter((x) => !seen.has(x.id))], nextCursor: next.nextCursor })
       setMore('idle')
     } catch {
       if (mounted.current && keyRef.current === asked) setMore('error')
@@ -75,7 +77,7 @@ export default function Students() {
 
   let body
   if (status === 'loading') {
-    body = <p className="mt-6 text-ink-soft">Loading…</p>
+    body = <p role="status" className="mt-6 text-ink-soft">Loading…</p>
   } else if (status === 'signed-out') {
     body = (
       <div className="mt-6 flex flex-col items-start gap-4">
@@ -88,11 +90,11 @@ export default function Students() {
   } else {
     const r = result && result.key === key ? result : null
     let list
-    if (!r) list = <p className="mt-6 text-ink-soft">Loading students…</p>
+    if (!r) list = <p role="status" className="mt-6 text-ink-soft">Loading students…</p>
     else if ('error' in r) {
       list = (
         <div className="mt-6 flex flex-col items-start gap-3">
-          <p>Couldn't load students.</p>
+          <p role="alert">Couldn't load students.</p>
           <button type="button" className={buttonClass} onClick={() => (setResult(null), setRetry((n) => n + 1))}>
             Try again
           </button>
@@ -126,8 +128,8 @@ export default function Students() {
               </li>
             ))}
           </ul>
-          {more === 'error' && <p className="mt-3 text-sm">Couldn't load more students.</p>}
-          {r.hasMore && (
+          {more === 'error' && <p role="alert" className="mt-3 text-sm">Couldn't load more students.</p>}
+          {r.nextCursor && (
             <button type="button" className={`${buttonClass} mt-4`} disabled={more === 'loading'} onClick={() => void showMore(r)}>
               {more === 'loading' ? 'Loading…' : 'Show more'}
             </button>
@@ -138,9 +140,11 @@ export default function Students() {
     body = (
       <>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-sm font-bold">
-            Move-in term
-            <select className={selectClass} value={term} onChange={(e) => setFilter('term', e.target.value)}>
+          <div className="flex flex-col gap-1">
+            <label htmlFor={termId} className="text-sm font-bold">
+              Move-in term
+            </label>
+            <select id={termId} className={selectClass} value={term} onChange={(e) => setFilter('term', e.target.value)}>
               <option value="">Any term</option>
               {terms.map((t) => (
                 <option key={t.value} value={t.value}>
@@ -148,17 +152,19 @@ export default function Students() {
                 </option>
               ))}
             </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-bold">
-            Budget
-            <select className={selectClass} value={band} onChange={(e) => setFilter('band', e.target.value)}>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor={bandId} className="text-sm font-bold">
+              Budget
+            </label>
+            <select id={bandId} className={selectClass} value={band} onChange={(e) => setFilter('band', e.target.value)}>
               {BUDGET_BANDS.map((b) => (
                 <option key={b.value} value={b.value}>
                   {b.label}
                 </option>
               ))}
             </select>
-          </label>
+          </div>
         </div>
         {list}
       </>
