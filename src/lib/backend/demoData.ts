@@ -1,7 +1,6 @@
 import { upcomingTerms } from '../profile'
-import type { Backend } from './types'
 import { createMemoryBackend } from './memory'
-import type { FakeOptions } from './memory'
+import type { FakeOptions, MemoryBackend } from './memory'
 
 export const DEMO_EMAIL = 'demo@example.com'
 export const DEMO_PASSWORD = 'demo-pass1'
@@ -45,7 +44,7 @@ export function demoStudents(): (DemoStudent & { lookingForRoommates: boolean })
 }
 
 /** A fresh pretend backend: sample students, signed in as Demo Student with an empty profile. Held in memory only. */
-export function createDemoBackend(): Backend {
+export function createDemoBackend(): MemoryBackend {
   return createMemoryBackend({
     users: [{ email: DEMO_EMAIL, password: DEMO_PASSWORD, name: 'Demo Student' }],
     students: demoStudents(),

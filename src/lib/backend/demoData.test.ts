@@ -41,16 +41,13 @@ describe('createDemoBackend', () => {
 
   it('hides the hidden students', async () => {
     const b = createDemoBackend()
-    const all = (await b.listStudents({ limit: 30 })).students.map((s) => s.id)
+    const listed = (await b.listStudents({ limit: 30 })).students.map((s) => s.id)
     const hidden = demoStudents().filter((s) => !s.lookingForRoommates)
     expect(hidden).toHaveLength(2)
-    // Hidden students have the ids right after the demo user and the visible ones; probe every id.
-    for (let i = 1; i <= 11; i++) {
-      const id = `user-${i}`
-      if (!all.includes(id)) {
-        const card = await b.getStudent(id)
-        expect(card).toBeNull()
-      }
+    for (const h of hidden) {
+      const id = b.idOf(h.email)
+      expect(listed).not.toContain(id)
+      expect(await b.getStudent(id)).toBeNull()
     }
   })
 

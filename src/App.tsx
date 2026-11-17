@@ -25,7 +25,7 @@ function Home() {
 
 function Layout() {
   return (
-    <div className="min-h-full pb-24">
+    <div className="min-h-[calc(100%-var(--banner-h,0px))] pb-24">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[2000] focus:bg-card focus:p-2"

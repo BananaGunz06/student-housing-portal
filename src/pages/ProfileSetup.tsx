@@ -14,7 +14,7 @@ export default function ProfileSetup() {
 
   const done = () => navigate(safeReturnTo(location.state), { replace: true })
   return (
-    <main className="min-h-full bg-paper px-4 py-8">
+    <main className="min-h-[calc(100%-var(--banner-h,0px))] bg-paper px-4 py-8">
       <div className="mx-auto flex max-w-xl flex-col gap-4">
         <h1 className="font-display text-3xl font-bold">Set up your profile</h1>
         <p className="text-ink-soft">All of this is optional. You can change it any time in Account.</p>
