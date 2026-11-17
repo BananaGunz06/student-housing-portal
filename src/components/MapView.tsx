@@ -81,7 +81,7 @@ export default function MapView({
   selectedId: selectedProp = null,
   hoveredId = null,
   onSelect,
-  className = 'h-[calc(100dvh-14rem)] min-h-80',
+  className = 'h-[calc(100dvh-14rem-var(--banner-h,0px))] min-h-80',
   showHeading = true,
 }: {
   results: ListingResult[]

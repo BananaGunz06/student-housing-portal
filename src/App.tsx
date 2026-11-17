@@ -12,7 +12,8 @@ import Saved from './pages/Saved'
 import StudentProfile from './pages/StudentProfile'
 import Students from './pages/Students'
 import Welcome from './pages/Welcome'
-import { defaultBackend } from './lib/backend'
+import DemoBanner from './components/DemoBanner'
+import { defaultBackend, isDemo } from './lib/backend'
 import { AccountProvider } from './state/AccountState'
 import { AppStateProvider, useAppState } from './state/AppState'
 import { CloudSync } from './state/CloudSync'
@@ -67,6 +68,7 @@ export default function App() {
       <AccountProvider backend={defaultBackend}>
         <AppStateProvider>
           <CloudSync />
+          {isDemo && <DemoBanner />}
           <AppRoutes />
         </AppStateProvider>
       </AccountProvider>

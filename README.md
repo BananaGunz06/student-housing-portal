@@ -38,10 +38,13 @@ Version 1 is a portfolio piece and an idea test. Browsing needs no account. Sign
 ```bash
 npm install
 npm run dev      # http://localhost:5173
+npm run demo     # http://localhost:5174, sample data, no account needed
 npm test         # unit + component tests (Vitest)
 npm run lint     # oxlint
 npm run build    # type-check and production build
 ```
+
+Try it without an account: `npm run demo` opens the app with fictional sample students and no database. Everything is kept in the browser's memory and resets when you refresh; the sign-in is shown on the banner at the top.
 
 ## Accounts
 

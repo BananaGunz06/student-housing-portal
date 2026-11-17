@@ -160,7 +160,7 @@ export default function Results() {
           nav. -mb-24 cancels the 6rem Layout puts under every page, so the page itself never scrolls. */}
       <div
         data-testid="results-frame"
-        className={isLg ? 'flex h-[calc(100dvh-3.5rem-env(safe-area-inset-bottom))] -mb-24 flex-col' : 'contents'}
+        className={isLg ? 'flex h-[calc(100dvh-3.5rem-env(safe-area-inset-bottom)-var(--banner-h,0px))] -mb-24 flex-col' : 'contents'}
       >
       <header className="sticky top-0 z-[1050] shrink-0 border-b border-line bg-paper/95 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 py-3 lg:max-w-none">
@@ -286,7 +286,7 @@ export default function Results() {
           {/* Hidden by CSS on phones; where matchMedia is missing, laptop-wide browsers still get it. */}
           <aside
             aria-labelledby={sidebarTitleId}
-            className="sticky top-40 hidden max-h-[calc(100dvh-11rem)] self-start overflow-y-auto pt-5 pr-1 pb-6 lg:block"
+            className="sticky top-40 hidden max-h-[calc(100dvh-11rem-var(--banner-h,0px))] self-start overflow-y-auto pt-5 pr-1 pb-6 lg:block"
           >
             <FilterPanel filters={filters} onChange={setFilters} count={shown.length} titleId={sidebarTitleId} />
           </aside>
