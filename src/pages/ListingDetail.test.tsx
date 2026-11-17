@@ -2,7 +2,9 @@ import { screen } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
 import { campusCommute, describeCommute } from '../lib/commute'
 import { formatMoney, trueMonthlyCost } from '../lib/cost'
+import { DEFAULT_FILTERS } from '../lib/filters'
 import { getAll } from '../lib/listingsRepo'
+import { termLabel, termOfMonth, termStartMonthName } from '../lib/profile'
 import { renderApp, setBudget } from '../test/renderApp'
 
 vi.mock('../components/MiniMap', () => ({ default: () => <div>mini map</div> }))
@@ -93,5 +95,42 @@ describe('Listing detail', () => {
     renderApp('/listing/does-not-exist')
     expect(screen.getByRole('heading', { name: 'We couldn’t find that place' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Back to search' })).toBeInTheDocument()
+  })
+
+  test('Starts and Lease say the term, its month and the number of terms', () => {
+    setBudget(5000)
+    renderApp(`/listing/${withExtras.id}`)
+    const term = termOfMonth(withExtras.availableFrom)
+    expect(screen.queryByText('Available from')).toBeNull()
+    expect(screen.getByText('Starts').nextElementSibling).toHaveTextContent(`${termLabel(term)} (${termStartMonthName(term)})`)
+    expect(screen.getByText('Lease').nextElementSibling).toHaveTextContent(
+      `${withExtras.leaseMonths} months (${withExtras.leaseMonths / 4} ${withExtras.leaseMonths === 4 ? 'term' : 'terms'})`,
+    )
+  })
+
+  describe('sublet note', () => {
+    const long = getAll().find((l) => l.leaseMonths === 12)!
+    const note = "12-month lease · you'd sublet the last 8 months"
+
+    test('shows when 4 months is chosen and the lease is 12 months', () => {
+      setBudget(5000)
+      localStorage.setItem('shp.filters', JSON.stringify({ ...DEFAULT_FILTERS, stay: 4 }))
+      renderApp(`/listing/${long.id}`)
+      expect(screen.getByText(note)).toBeInTheDocument()
+    })
+
+    test.each(['any', '8+'])('does not show for %s', (stay) => {
+      setBudget(5000)
+      localStorage.setItem('shp.filters', JSON.stringify({ ...DEFAULT_FILTERS, stay }))
+      renderApp(`/listing/${long.id}`)
+      expect(screen.queryByText(/you'd sublet/)).toBeNull()
+    })
+
+    test('says the last 4 months when 8 months is chosen', () => {
+      setBudget(5000)
+      localStorage.setItem('shp.filters', JSON.stringify({ ...DEFAULT_FILTERS, stay: 8 }))
+      renderApp(`/listing/${long.id}`)
+      expect(screen.getByText("12-month lease · you'd sublet the last 4 months")).toBeInTheDocument()
+    })
   })
 })

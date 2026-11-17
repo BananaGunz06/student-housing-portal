@@ -79,6 +79,10 @@ describe('cleanCloudState', () => {
     const r = cleanCloudState({ filters: { furnishedOnly: true, bedrooms: 9, bogus: 1, maxCommute: 20 } })
     expect(r.filters).toEqual({ ...DEFAULT_FILTERS, furnishedOnly: true, maxCommute: 20 })
   })
+  it('turns an account\'s old available-by month into its term', () => {
+    const r = cleanCloudState({ filters: { moveIn: '2027-01', stay: 'forever' } })
+    expect(r.filters).toEqual({ ...DEFAULT_FILTERS, moveInTerm: '2027-winter', stay: 'any' })
+  })
   it('drops unknown listings, duplicates and bad messages', () => {
     const r = cleanCloudState({
       savedIds: ['gue-001', 'gue-001', 'nope', 7],

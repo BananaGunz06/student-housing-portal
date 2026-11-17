@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react'
 import { describe, expect, test } from 'vitest'
 import { formatMoney } from '../lib/cost'
 import { applyFilters, DEFAULT_FILTERS, evaluate, nearestBudgetWithResults } from '../lib/filters'
+import { termLabel, upcomingTerms } from '../lib/profile'
 import { campusCommute, shortCommute } from '../lib/commute'
 import { getAll } from '../lib/listingsRepo'
 import { renderApp, setBudget } from '../test/renderApp'
@@ -60,6 +61,87 @@ describe('Results', () => {
     expect(within(sidebar).getByRole('button', { name: 'Studio apartment' })).toHaveAttribute('aria-pressed', 'false')
   })
 
+  test('the sidebar term and length change the list; their chips remove them', async () => {
+    setBudget(5000)
+    const { user } = renderApp('/results')
+    const sidebar = screen.getByRole('complementary', { name: 'Filters' })
+    const term = upcomingTerms(new Date()).find(
+      (t) => applyFilters(evaluate(getAll(), 5000), { ...DEFAULT_FILTERS, moveInTerm: t.value }).length > 0,
+    )!
+    const byTerm = applyFilters(evaluate(getAll(), 5000), { ...DEFAULT_FILTERS, moveInTerm: term.value }).length
+    expect(byTerm).toBeLessThan(expectedCount(5000))
+
+    await user.selectOptions(within(sidebar).getByRole('combobox', { name: 'Term' }), term.label)
+    expect(screen.getAllByRole('article')).toHaveLength(byTerm)
+    const applied = screen.getByRole('list', { name: 'Applied filters' })
+    expect(within(applied).getByText(`Moving in ${term.label}`)).toBeInTheDocument()
+
+    const group = within(sidebar).getByRole('group', { name: 'How long' })
+    await user.click(within(group).getByRole('button', { name: '8+ months' }))
+    expect(within(group).getByRole('button', { name: '8+ months' })).toHaveAttribute('aria-pressed', 'true')
+    const both = applyFilters(evaluate(getAll(), 5000), { ...DEFAULT_FILTERS, moveInTerm: term.value, stay: '8+' }).length
+    expect(both).toBeLessThan(byTerm)
+    expect(screen.getAllByRole('article')).toHaveLength(both)
+
+    await user.click(within(applied).getByRole('button', { name: 'Remove filter: 8+ months' }))
+    expect(screen.getAllByRole('article')).toHaveLength(byTerm)
+    await user.click(within(screen.getByRole('list', { name: 'Applied filters' })).getByRole('button', { name: `Remove filter: Moving in ${term.label}` }))
+    expect(screen.getAllByRole('article')).toHaveLength(expectedCount(5000))
+    expect(within(sidebar).getByRole('combobox', { name: 'Term' })).toHaveValue('')
+  })
+
+  test('the phone drawer has the same term and length controls', async () => {
+    setBudget(5000)
+    const { user } = renderApp('/results')
+    await user.click(screen.getByRole('button', { name: 'All filters' }))
+    const drawer = screen.getByRole('dialog', { name: 'Filters' })
+    expect(within(drawer).getByRole('combobox', { name: 'Term' })).toBeInTheDocument()
+    await user.click(within(within(drawer).getByRole('group', { name: 'How long' })).getByRole('button', { name: '4 months' }))
+    expect(screen.getByRole('button', { name: 'All filters (1)' })).toBeInTheDocument()
+  })
+
+  test('a stored term that is now past still shows in the select and can be cleared', async () => {
+    setBudget(5000)
+    localStorage.setItem('shp.filters', JSON.stringify({ ...DEFAULT_FILTERS, moveInTerm: '2020-winter' }))
+    const { user } = renderApp('/results')
+    const sidebar = screen.getByRole('complementary', { name: 'Filters' })
+    expect(within(sidebar).getByRole('combobox', { name: 'Term' })).toHaveValue('2020-winter')
+    expect(within(sidebar).getByRole('option', { name: termLabel('2020-winter') })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: `Remove filter: Moving in ${termLabel('2020-winter')}` }))
+    expect(screen.getAllByRole('article')).toHaveLength(expectedCount(5000))
+  })
+
+  test('an old saved available-by month loads as its term', () => {
+    setBudget(5000)
+    localStorage.setItem('shp.filters', JSON.stringify({ ...DEFAULT_FILTERS, moveIn: '2027-01' }))
+    renderApp('/results')
+    expect(within(screen.getByRole('list', { name: 'Applied filters' })).getByText('Moving in Winter 2027')).toBeInTheDocument()
+  })
+
+  test('each card says when it starts and how long the lease is', () => {
+    setBudget(5000)
+    renderApp('/results')
+    const l = getAll().find((x) => x.leaseMonths === 12 && x.availableFrom === '2027-01')!
+    const card = screen.getAllByRole('article').find((a) => within(a).queryByText(l.title))!
+    expect(within(card).getByText('From Winter 2027 · 12 months')).toBeInTheDocument()
+  })
+
+  test('the sublet note is on a longer lease only when a shorter stay is chosen', () => {
+    setBudget(5000)
+    const note = "12-month lease · you'd sublet the last 8 months"
+    localStorage.setItem('shp.filters', JSON.stringify({ ...DEFAULT_FILTERS, stay: 4 }))
+    const { unmount } = renderApp('/results')
+    const twelve = getAll().filter((x) => x.leaseMonths === 12).length
+    expect(screen.getAllByText(note)).toHaveLength(twelve)
+    unmount()
+    for (const stay of ['any', '8+']) {
+      localStorage.setItem('shp.filters', JSON.stringify({ ...DEFAULT_FILTERS, stay }))
+      const r = renderApp('/results')
+      expect(screen.queryByText(/you'd sublet/)).toBeNull()
+      r.unmount()
+    }
+  })
+
   test('Clear all removes every filter', async () => {
     setBudget(5000)
     localStorage.setItem('shp.filters', JSON.stringify({ ...DEFAULT_FILTERS, furnishedOnly: true, maxCommute: 15 }))
@@ -111,17 +193,29 @@ describe('Results', () => {
 })
 
 describe('Welcome', () => {
-  test('saves the budget and optional details, then shows results', async () => {
+  test('saves the budget, term and length, then shows results; no bedroom question', async () => {
+    localStorage.setItem('shp.filters', JSON.stringify({ ...DEFAULT_FILTERS, bedrooms: 2 }))
     const { user } = renderApp('/')
     const field = screen.getByLabelText('What can you spend per month, all-in?')
     await user.clear(field)
     await user.type(field, '850')
     await user.click(screen.getByText('More details (optional)'))
-    await user.click(screen.getByRole('button', { name: 'Studio' }))
+    expect(screen.queryByText('How many bedrooms?')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Studio' })).toBeNull()
+    const term = upcomingTerms(new Date())[2]
+    expect(screen.getByRole('option', { name: 'Not sure yet' })).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('Which term do you move in?'), term.label)
+    const group = screen.getByRole('group', { name: 'For how long?' })
+    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['Any', '4 months', '8 months', '8+ months'])
+    expect(within(group).getByRole('button', { name: 'Any' })).toHaveAttribute('aria-pressed', 'true')
+    await user.click(within(group).getByRole('button', { name: '8 months' }))
     await user.click(screen.getByRole('button', { name: 'Show places that fit' }))
     expect(screen.getByRole('heading', { name: 'Places in Guelph for your budget' })).toBeInTheDocument()
     expect(JSON.parse(localStorage.getItem('shp.budget')!)).toBe(850)
-    expect(JSON.parse(localStorage.getItem('shp.filters')!).bedrooms).toBe(0)
+    const saved = JSON.parse(localStorage.getItem('shp.filters')!)
+    expect(saved.moveInTerm).toBe(term.value)
+    expect(saved.stay).toBe(8)
+    expect(saved.bedrooms).toBe(2)
   })
 
   test('cards say "to campus" before the transfer note', () => {

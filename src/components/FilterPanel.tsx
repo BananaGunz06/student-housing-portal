@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { HOUSING_TYPE_LABELS, type HousingType } from '../data/types'
-import { activeFilterCount, DEFAULT_FILTERS, type Filters } from '../lib/filters'
+import { activeFilterCount, DEFAULT_FILTERS, STAY_OPTIONS, type Filters } from '../lib/filters'
 import { plural } from '../lib/format'
+import { termOptionsWith, upcomingTerms } from '../lib/profile'
 
 const BEDROOMS: { value: Filters['bedrooms']; label: string }[] = [
   { value: 'any', label: 'Any' },
@@ -46,6 +47,8 @@ export default function FilterPanel({
   const toggleType = (t: HousingType) =>
     set({ types: f.types.includes(t) ? f.types.filter((x) => x !== t) : [...f.types, t] })
   const active = activeFilterCount(f)
+  const [upcoming] = useState(() => upcomingTerms(new Date()))
+  const terms = termOptionsWith(upcoming, f.moveInTerm)
 
   return (
     <div>
@@ -100,14 +103,30 @@ export default function FilterPanel({
         </Group>
         <Group legend="Moving in">
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-ink-soft">Only show places available by</span>
-            <input
-              type="month"
+            <span className="text-sm text-ink-soft">Term</span>
+            <select
               className="min-h-11 rounded-xl border-2 border-line bg-card px-3"
-              value={f.moveIn ?? ''}
-              onChange={(e) => set({ moveIn: e.target.value || null })}
-            />
+              value={f.moveInTerm ?? ''}
+              onChange={(e) => set({ moveInTerm: e.target.value || null })}
+            >
+              <option value="">Any term</option>
+              {terms.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
           </label>
+          <div role="group" aria-label="How long" className="mt-3">
+            <p className="mb-1 text-sm text-ink-soft" aria-hidden="true">How long</p>
+            <div className="flex flex-wrap gap-2">
+              {STAY_OPTIONS.map((o) => (
+                <button key={o.label} type="button" aria-pressed={f.stay === o.value} className={chip(f.stay === o.value)} onClick={() => set({ stay: o.value })}>
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </Group>
         <Group legend="More">
           <label className="flex min-h-11 items-center gap-3">

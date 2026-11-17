@@ -4,7 +4,8 @@ import { HOUSING_TYPE_LABELS } from '../data/types'
 import { shortCommute } from '../lib/commute'
 import { formatMoney } from '../lib/cost'
 import type { ListingResult } from '../lib/filters'
-import { bedroomsLabel, formatMonth } from '../lib/format'
+import { bedroomsLabel } from '../lib/format'
+import { termLabel, termOfMonth } from '../lib/profile'
 import FitBadge from './FitBadge'
 import ListingArt from './ListingArt'
 
@@ -40,7 +41,7 @@ export default function CompareTable({ results, showFit }: { results: ListingRes
     { label: 'Commute', cell: (r) => shortCommute(r.commute) },
     { label: 'Lease', cell: (r) => `${r.listing.leaseMonths} months` },
     { label: 'Bedrooms', cell: (r) => bedroomsLabel(r.listing) },
-    { label: 'Available from', cell: (r) => formatMonth(r.listing.availableFrom) },
+    { label: 'Starts', cell: (r) => termLabel(termOfMonth(r.listing.availableFrom)) },
     { label: 'Furnished', cell: (r) => (r.listing.furnished ? 'Yes' : 'No') },
   ]
 

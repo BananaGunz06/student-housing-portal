@@ -16,7 +16,7 @@
     "internetEstimate": 30,
     "furnished": true,
     "leaseMonths": 4,
-    "availableFrom": "2026-12",
+    "availableFrom": "2027-01",
     "included": [
       "Utilities (heat, hydro, water)",
       "Cleaning rota",
@@ -149,7 +149,7 @@
     "internetEstimate": 0,
     "furnished": true,
     "leaseMonths": 12,
-    "availableFrom": "2026-12",
+    "availableFrom": "2027-01",
     "included": [
       "Internet",
       "Shared kitchen",
@@ -282,7 +282,7 @@
     "internetEstimate": 0,
     "furnished": true,
     "leaseMonths": 8,
-    "availableFrom": "2026-12",
+    "availableFrom": "2027-01",
     "included": [
       "Internet",
       "Utilities (heat, hydro, water)",
@@ -315,7 +315,7 @@
     "internetEstimate": 35,
     "furnished": true,
     "leaseMonths": 8,
-    "availableFrom": "2026-12",
+    "availableFrom": "2027-01",
     "included": [
       "Utilities (heat, hydro, water)",
       "Cleaning rota",
@@ -576,7 +576,7 @@
     "internetEstimate": 55,
     "furnished": true,
     "leaseMonths": 12,
-    "availableFrom": "2026-12",
+    "availableFrom": "2027-01",
     "included": [
       "Secure entry",
       "Laundry in building",
@@ -1234,7 +1234,7 @@
     "internetEstimate": 75,
     "furnished": false,
     "leaseMonths": 12,
-    "availableFrom": "2026-12",
+    "availableFrom": "2027-01",
     "included": [
       "Backyard",
       "Driveway parking"

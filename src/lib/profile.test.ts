@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { profileSummary, termLabel, termOptionsWith, upcomingTerms, validateDetails } from './profile'
+import { profileSummary, termLabel, termOfMonth, termStartMonthName, termOptionsWith, upcomingTerms, validateDetails } from './profile'
 
 const empty = { bio: '', program: '', year: null, moveInTerm: null, budget: null, lookingForRoommates: false }
 
@@ -70,4 +70,23 @@ describe('termOptionsWith', () => {
     expect(termOptionsWith(terms, terms[2].value)).toEqual(terms)
     expect(termOptionsWith(terms, null)).toEqual(terms)
   })
+})
+
+describe('termOfMonth', () => {
+  test.each([
+    ['2027-01', '2027-winter'],
+    ['2027-04', '2027-winter'],
+    ['2027-05', '2027-summer'],
+    ['2027-08', '2027-summer'],
+    ['2027-09', '2027-fall'],
+    ['2027-12', '2027-fall'],
+  ])('%s is %s', (month, term) => {
+    expect(termOfMonth(month)).toBe(term)
+  })
+})
+
+test('termStartMonthName', () => {
+  expect(termStartMonthName('2027-winter')).toBe('January')
+  expect(termStartMonthName('2027-summer')).toBe('May')
+  expect(termStartMonthName('2027-fall')).toBe('September')
 })

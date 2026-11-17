@@ -22,9 +22,9 @@ Version 1 is a portfolio piece and an idea test. Browsing needs no account. Sign
 
 ## What it does
 
-- **Budget first.** One question to start ("What can you spend per month, all-in?"), with optional move-in month and bedrooms. Your budget stays on your device unless you sign in.
+- **Budget first.** One question to start ("What can you spend per month, all-in?"), with an optional move-in term and how long you need the place (4 months, 8 months, 8+ months). Your budget stays on your device unless you sign in.
 - **True monthly cost.** Rent + utilities + internet + bus pass. Every result shows **Fits**, **Stretch** (up to 10% over) or **Over budget**, always as text and an icon, never colour alone. A meter shows the cost against your budget.
-- **Results.** Fits and Stretch places, cheapest first. A list/map toggle, plus filters for bedrooms, type of place, furnished, longest commute and move-in month. When nothing fits, it suggests the nearest budget that has results ("Nothing fits $600. 3 places fit at $650.").
+- **Results.** Fits and Stretch places, cheapest first. A list/map toggle, plus filters for bedrooms, type of place, furnished, longest commute, move-in term and how long you stay. Listings show when they start and the lease length, and say when you would need to sublet part of a longer lease. When nothing fits, it suggests the nearest budget that has results ("Nothing fits $600. 3 places fit at $650.").
 - **Map.** A price on every pin, coloured and marked by fit. Bus routes as lines, stops as dots, campus marked. Tap a pin for a preview.
 - **Listing detail.** The cost breakdown, how much of your budget is left, what's included, and lease details. A mini-map shows the best stop with a dashed walking line: "≈6 min walk to stop · Route 99 · ≈10 min to campus".
 - **Saved + Compare.** Save places, then compare 2 or 3 side by side.

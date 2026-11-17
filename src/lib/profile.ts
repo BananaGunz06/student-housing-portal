@@ -47,6 +47,19 @@ export function upcomingTerms(today: Date, count = 6): { value: string; label: s
   return out
 }
 
+/** '2027-09' → '2027-fall'. Winter = Jan–Apr, Summer = May–Aug, Fall = Sep–Dec. */
+export function termOfMonth(month: string): string {
+  const [year, m] = month.split('-').map(Number)
+  return `${year}-${SEASONS[seasonIndex(m - 1)]}`
+}
+
+const SEASON_START_MONTH = { winter: 'January', summer: 'May', fall: 'September' }
+
+/** '2027-fall' → 'September'. */
+export function termStartMonthName(term: string): string {
+  return SEASON_START_MONTH[term.split('-')[1] as keyof typeof SEASON_START_MONTH] ?? ''
+}
+
 /** '2027-fall' → 'Fall 2027'. */
 export function termLabel(value: string): string {
   const [year, season] = value.split('-')

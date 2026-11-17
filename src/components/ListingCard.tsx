@@ -2,7 +2,9 @@ import { Link, type To } from 'react-router-dom'
 import { HOUSING_TYPE_LABELS } from '../data/types'
 import { shortCommute } from '../lib/commute'
 import { budgetGapText, formatMoney } from '../lib/cost'
-import type { ListingResult } from '../lib/filters'
+import { subletNote, type ListingResult } from '../lib/filters'
+import { termLabel, termOfMonth } from '../lib/profile'
+import { useAppState } from '../state/AppState'
 import BudgetMeter from './BudgetMeter'
 import FitBadge from './FitBadge'
 import ListingArt from './ListingArt'
@@ -24,6 +26,8 @@ export default function ListingCard({
   onHover?: (id: string | null) => void
 }) {
   const { listing: l, cost, fit, commute } = result
+  const { filters } = useAppState()
+  const sublet = subletNote(l.leaseMonths, filters.stay)
   return (
     <article
       className="relative flex flex-col overflow-hidden rounded-2xl border border-line bg-card"
@@ -61,6 +65,8 @@ export default function ListingCard({
           {HOUSING_TYPE_LABELS[l.type]} in {l.neighbourhood}
         </p>
         <p className="mt-2 text-sm font-bold">{shortCommute(commute, { toCampus: true })}</p>
+        <p className="mt-1 text-sm text-ink-soft">{`From ${termLabel(termOfMonth(l.availableFrom))} · ${l.leaseMonths} months`}</p>
+        {sublet && <p className="mt-1 text-sm font-bold">{sublet}</p>}
       </div>
     </article>
   )
