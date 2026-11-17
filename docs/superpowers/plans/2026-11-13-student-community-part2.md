@@ -1,5 +1,7 @@
 # Student community part 2 (direct messages) Implementation Plan
 
+> **Status: not approved (owner, 2026-11-16). Do not build from this plan.** Kept for reference: its database design (functions, row-level security, block and report) may be reused by the roommate chat design that replaces it. See `docs/superpowers/NOTES.md`.
+
 > **For agentic workers:** follow `CLAUDE.md`: few large steps, one builder per step (resume it for fixes), one Opus review at the end, nothing in parallel. Steps use checkbox (`- [ ]`) syntax.
 
 **Goal:** Students can message each other one-to-one from a profile page, see their chats and an unread count in the Messages tab, and block or report another student.

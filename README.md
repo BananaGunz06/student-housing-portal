@@ -103,11 +103,19 @@ src/
     storage.ts        localStorage hook that keeps working when storage is blocked
     profile.ts        profile rules: years, terms, budget bands, validation
     avatar.ts         photo checks and resizing
-    backend/          Supabase sign-in, profiles and storage (bands.ts: budget band ranges)
-  state/AppState.tsx  budget, filters, saved places and sent messages, remembered in the browser
-  components/    BudgetInput, ListingCard, FitBadge, BudgetMeter, CostBreakdown, FilterSheet,
-                 MapView, pricePin, TransitLayer, MiniMap, CompareTable, BottomNav, ListingArt,
-                 PosterCard, MessageSheet, Avatar, ProfileForm, StudentCard
+    safeReturnTo.ts   only in-app pages are accepted as a "return to" link after sign-up
+    ruler.ts          layout maths for the budget ruler (started, not used by any screen yet)
+    backend/          the only code that talks to Supabase:
+                        supabase.ts   sign-in, profiles, photos and synced data
+                        memory.ts     the same in memory (tests and demo mode)
+                        demoData.ts   fictional sample students for `npm run demo`
+                        bands.ts      budget band ranges
+  state/         AppState (budget, filters, saved places, messages), AccountState (sign-in, profile),
+                 CloudSync (keeps the account and the device in step)
+  components/    BudgetInput, ListingCard, ListingDetailContent, FitBadge, BudgetMeter, CostBreakdown,
+                 FilterPanel, FilterDrawer, FilterChips, MapView, pricePin, TransitLayer, CommuteLayers,
+                 MiniMap, CompareTable, BottomNav, ListingArt, PosterCard, MessageSheet, SignInSheet,
+                 AuthForms, SaveButton, Avatar, ProfileForm, StudentCard, DemoBanner
   pages/         Welcome, Results, ListingDetail, Saved, Compare, Messages, Conversation, Account,
                  ProfileSetup, Students, StudentProfile, NotFound
 scripts/
