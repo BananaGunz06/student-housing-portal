@@ -1,11 +1,20 @@
 import { screen, within } from '@testing-library/react'
-import { describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { formatMoney } from '../lib/cost'
 import { applyFilters, DEFAULT_FILTERS, evaluate, nearestBudgetWithResults } from '../lib/filters'
 import { termLabel, upcomingTerms } from '../lib/profile'
 import { campusCommute, shortCommute } from '../lib/commute'
 import { getAll } from '../lib/listingsRepo'
 import { renderApp, setBudget } from '../test/renderApp'
+
+// The sample data starts in 2027, so the upcoming terms must be worked out from a fixed day.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-17T12:00:00'))
+})
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 const expectedCount = (budget: number) => applyFilters(evaluate(getAll(), budget), DEFAULT_FILTERS).length
 
@@ -199,7 +208,6 @@ describe('Welcome', () => {
     const field = screen.getByLabelText('What can you spend per month, all-in?')
     await user.clear(field)
     await user.type(field, '850')
-    await user.click(screen.getByText('More details (optional)'))
     expect(screen.queryByText('How many bedrooms?')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Studio' })).toBeNull()
     const term = upcomingTerms(new Date())[2]
@@ -216,6 +224,23 @@ describe('Welcome', () => {
     expect(saved.moveInTerm).toBe(term.value)
     expect(saved.stay).toBe(8)
     expect(saved.bedrooms).toBe(2)
+  })
+
+  test('term and length are visible on the first screen without opening anything', () => {
+    renderApp('/')
+    expect(screen.getByLabelText('Which term do you move in?')).toBeVisible()
+    expect(screen.getByRole('group', { name: 'For how long?' })).toBeVisible()
+    expect(screen.queryByText('More details (optional)')).toBeNull()
+  })
+
+  test('a stored term that is no longer upcoming stays selected and can be cleared', async () => {
+    localStorage.setItem('shp.filters', JSON.stringify({ ...DEFAULT_FILTERS, moveInTerm: '2026-summer' }))
+    const { user } = renderApp('/')
+    const select = screen.getByLabelText('Which term do you move in?')
+    expect(select).toHaveValue('2026-summer')
+    await user.selectOptions(select, 'Not sure yet')
+    await user.click(screen.getByRole('button', { name: 'Show places that fit' }))
+    expect(JSON.parse(localStorage.getItem('shp.filters')!).moveInTerm).toBeNull()
   })
 
   test('cards say "to campus" before the transfer note', () => {

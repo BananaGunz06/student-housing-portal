@@ -7,6 +7,13 @@ export function formatMonth(ym: string): string {
   return new Date(y, m - 1, 1).toLocaleDateString('en-CA', { month: 'long', year: 'numeric' })
 }
 
+/** '2027-01' → 'January' */
+export function monthName(ym: string): string {
+  const [y, m] = ym.split('-').map(Number)
+  if (!y || !m) return ym
+  return new Date(y, m - 1, 1).toLocaleDateString('en-CA', { month: 'long' })
+}
+
 export function bedroomsLabel(l: Pick<Listing, 'bedrooms' | 'type'>): string {
   if (l.type === 'room') return 'Private bedroom'
   if (l.bedrooms === 0) return 'Studio'

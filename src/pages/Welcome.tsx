@@ -39,9 +39,7 @@ export default function Welcome() {
           <BudgetInput id="budget" size="lg" value={draft} onChange={setDraft} />
         </div>
 
-        <details className="mt-6 rounded-2xl border border-line bg-card px-4 [&[open]>summary]:mb-2">
-          <summary className="flex min-h-12 cursor-pointer items-center font-bold">More details (optional)</summary>
-          <label className="mt-2 flex flex-col gap-1">
+          <label className="mt-6 flex flex-col gap-1">
             <span>Which term do you move in?</span>
             <select
               className="min-h-11 rounded-xl border-2 border-line bg-paper px-3"
@@ -56,7 +54,7 @@ export default function Welcome() {
               ))}
             </select>
           </label>
-          <fieldset className="mt-4 pb-4">
+          <fieldset className="mt-5">
             <legend className="mb-2">For how long?</legend>
             <div className="flex flex-wrap gap-2">
               {STAY_OPTIONS.map((o) => (
@@ -74,7 +72,6 @@ export default function Welcome() {
               ))}
             </div>
           </fieldset>
-        </details>
 
         <button type="submit" className="mt-auto min-h-14 rounded-full bg-ink px-6 text-lg font-bold text-white sm:mt-8">
           Show places that fit

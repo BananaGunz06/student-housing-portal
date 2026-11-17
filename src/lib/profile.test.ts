@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { profileSummary, termLabel, termOfMonth, termStartMonthName, termOptionsWith, upcomingTerms, validateDetails } from './profile'
+import { profileSummary, termLabel, termOfMonth, termOptionsWith, upcomingTerms, validateDetails } from './profile'
 
 const empty = { bio: '', program: '', year: null, moveInTerm: null, budget: null, lookingForRoommates: false }
 
@@ -83,10 +83,4 @@ describe('termOfMonth', () => {
   ])('%s is %s', (month, term) => {
     expect(termOfMonth(month)).toBe(term)
   })
-})
-
-test('termStartMonthName', () => {
-  expect(termStartMonthName('2027-winter')).toBe('January')
-  expect(termStartMonthName('2027-summer')).toBe('May')
-  expect(termStartMonthName('2027-fall')).toBe('September')
 })

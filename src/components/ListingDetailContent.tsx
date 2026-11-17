@@ -11,8 +11,8 @@ import { HOUSING_TYPE_LABELS, type Listing } from '../data/types'
 import { describeCommute } from '../lib/commute'
 import { formatMoney } from '../lib/cost'
 import { evaluateOne, subletNote } from '../lib/filters'
-import { bedroomsLabel } from '../lib/format'
-import { termLabel, termOfMonth, termStartMonthName } from '../lib/profile'
+import { bedroomsLabel, monthName } from '../lib/format'
+import { termLabel, termOfMonth } from '../lib/profile'
 import { useAccount } from '../state/AccountState'
 import { useAppState } from '../state/AppState'
 
@@ -134,7 +134,7 @@ export default function ListingDetailContent({
         <Section title="The details">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-2xl border border-line bg-card p-4">
             <div><dt className="text-sm text-ink-soft">Lease</dt><dd className="font-bold">{`${l.leaseMonths} months (${l.leaseMonths / 4} ${l.leaseMonths === 4 ? 'term' : 'terms'})`}</dd></div>
-            <div><dt className="text-sm text-ink-soft">Starts</dt><dd className="font-bold">{`${termLabel(startTerm)} (${termStartMonthName(startTerm)})`}</dd></div>
+            <div><dt className="text-sm text-ink-soft">Starts</dt><dd className="font-bold">{`${termLabel(startTerm)} (${monthName(l.availableFrom)})`}</dd></div>
             <div><dt className="text-sm text-ink-soft">Bedrooms</dt><dd className="font-bold">{bedroomsLabel(l)}</dd></div>
             <div><dt className="text-sm text-ink-soft">Bathrooms</dt><dd className="font-bold">{l.bathrooms}{l.type === 'room' ? ' shared' : ''}</dd></div>
             <div><dt className="text-sm text-ink-soft">Furnished</dt><dd className="font-bold">{l.furnished ? 'Yes' : 'No'}</dd></div>

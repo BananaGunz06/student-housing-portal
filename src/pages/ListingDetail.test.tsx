@@ -4,7 +4,6 @@ import { campusCommute, describeCommute } from '../lib/commute'
 import { formatMoney, trueMonthlyCost } from '../lib/cost'
 import { DEFAULT_FILTERS } from '../lib/filters'
 import { getAll } from '../lib/listingsRepo'
-import { termLabel, termOfMonth, termStartMonthName } from '../lib/profile'
 import { renderApp, setBudget } from '../test/renderApp'
 
 vi.mock('../components/MiniMap', () => ({ default: () => <div>mini map</div> }))
@@ -99,13 +98,11 @@ describe('Listing detail', () => {
 
   test('Starts and Lease say the term, its month and the number of terms', () => {
     setBudget(5000)
-    renderApp(`/listing/${withExtras.id}`)
-    const term = termOfMonth(withExtras.availableFrom)
+    const l = getAll().find((x) => x.availableFrom === '2027-01' && x.leaseMonths === 12)!
+    renderApp(`/listing/${l.id}`)
     expect(screen.queryByText('Available from')).toBeNull()
-    expect(screen.getByText('Starts').nextElementSibling).toHaveTextContent(`${termLabel(term)} (${termStartMonthName(term)})`)
-    expect(screen.getByText('Lease').nextElementSibling).toHaveTextContent(
-      `${withExtras.leaseMonths} months (${withExtras.leaseMonths / 4} ${withExtras.leaseMonths === 4 ? 'term' : 'terms'})`,
-    )
+    expect(screen.getByText('Starts').nextElementSibling).toHaveTextContent('Winter 2027 (January)')
+    expect(screen.getByText('Lease').nextElementSibling).toHaveTextContent('12 months (3 terms)')
   })
 
   describe('sublet note', () => {
