@@ -12,7 +12,8 @@ import Saved from './pages/Saved'
 import StudentProfile from './pages/StudentProfile'
 import Students from './pages/Students'
 import Welcome from './pages/Welcome'
-import { defaultBackend } from './lib/backend'
+import DemoBanner from './components/DemoBanner'
+import { defaultBackend, isDemo } from './lib/backend'
 import { AccountProvider } from './state/AccountState'
 import { AppStateProvider, useAppState } from './state/AppState'
 import { CloudSync } from './state/CloudSync'
@@ -24,7 +25,7 @@ function Home() {
 
 function Layout() {
   return (
-    <div className="min-h-full pb-24">
+    <div className="min-h-[calc(100%-var(--banner-h,0px))] pb-24">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[2000] focus:bg-card focus:p-2"
@@ -67,6 +68,7 @@ export default function App() {
       <AccountProvider backend={defaultBackend}>
         <AppStateProvider>
           <CloudSync />
+          {isDemo && <DemoBanner />}
           <AppRoutes />
         </AppStateProvider>
       </AccountProvider>

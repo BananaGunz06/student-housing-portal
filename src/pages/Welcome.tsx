@@ -31,7 +31,7 @@ export default function Welcome() {
   }
 
   return (
-    <main className="mx-auto flex min-h-full max-w-md flex-col px-5 pt-10 pb-8">
+    <main className="mx-auto flex min-h-[calc(100%-var(--banner-h,0px))] max-w-md flex-col px-5 pt-10 pb-8">
       <p className="font-bold text-ink-soft">Student housing near {CAMPUS.name}</p>
       <form onSubmit={submit} className="mt-6 flex flex-1 flex-col">
         <h1 className="font-display text-4xl leading-[1.05] font-bold">
