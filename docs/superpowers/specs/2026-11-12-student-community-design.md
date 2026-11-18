@@ -1,6 +1,6 @@
 # Student community: profiles, Students tab, direct messages
 
-Date: 2026-11-12 · Status: design approved in chat ("yes"); written spec awaiting the owner's review
+Date: 2026-11-12 · Status: part 1 (profiles, Students tab) built and merged (#3). Part 2 (direct messages) as written here was **not approved** by the owner on 2026-11-16: it read as a social app. It is being redesigned as roommate chat; see `docs/superpowers/NOTES.md`.
 
 ## Why
 

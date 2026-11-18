@@ -26,9 +26,13 @@ describe('Saved and Compare', () => {
 
     expect(screen.getByRole('heading', { name: 'Compare 2 places' })).toBeInTheDocument()
     expect(screen.getAllByRole('columnheader')).toHaveLength(2)
-    for (const label of ['True monthly cost', 'Advertised rent', 'Included', 'Commute', 'Lease', 'Bedrooms']) {
+    for (const label of ['True monthly cost', 'Advertised rent', 'Included', 'Commute', 'Lease', 'Bedrooms', 'Starts']) {
       expect(screen.getByRole('rowheader', { name: label })).toBeInTheDocument()
     }
+    expect(screen.queryByRole('rowheader', { name: 'Available from' })).toBeNull()
+    const starts = within(screen.getByRole('rowheader', { name: 'Starts' }).closest('tr')!).getAllByRole('cell')
+    expect(starts).toHaveLength(2)
+    for (const cell of starts) expect(cell).toHaveTextContent(/^(Winter|Summer|Fall) 20\d\d$/)
     expect(screen.getByText('Lowest')).toBeInTheDocument()
   })
 

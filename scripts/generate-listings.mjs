@@ -42,7 +42,7 @@ const mix = [
   ['house', 3, 2, 2600, 3200, 2],
 ]
 
-const months = ['2026-12', '2027-01', '2027-01', '2027-05', '2027-05', '2027-09', '2027-09', '2027-09']
+const months = ['2027-01', '2027-01', '2027-01', '2027-05', '2027-05', '2027-09', '2027-09', '2027-09']
 
 const extras = {
   room: ['Shared kitchen', 'Laundry in house', 'Backyard', 'Bike storage', 'Parking spot', 'Cleaning rota', 'Desk and chair'],

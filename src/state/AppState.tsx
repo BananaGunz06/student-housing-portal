@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import type { CloudState } from '../lib/backend/types'
 import { clampBudget } from '../lib/cost'
-import { DEFAULT_FILTERS, type Filters } from '../lib/filters'
+import { cleanFilters, DEFAULT_FILTERS, type Filters } from '../lib/filters'
 import { getById } from '../lib/listingsRepo'
 import { isMessage, newMessageId, type Message, type SharedDetails } from '../lib/messages'
 import { useLocalStorage } from '../lib/storage'
@@ -38,8 +38,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [savedRaw, setSavedRaw] = useLocalStorage<string[]>('shp.saved', [])
   const [messagesRaw, setMessages] = useLocalStorage<Message[]>('shp.messages', [])
 
-  // Stored filters may predate a new field; fill gaps from the defaults.
-  const filters = useMemo(() => ({ ...DEFAULT_FILTERS, ...storedFilters }), [storedFilters])
+  // Stored filters may predate a field (or hold an old month); clean them into the current shape.
+  const filters = useMemo(() => cleanFilters(storedFilters), [storedFilters])
   // A saved place that is no longer listed is dropped quietly.
   const savedIds = useMemo(
     () => (Array.isArray(savedRaw) ? savedRaw.filter((id) => getById(id)) : []),

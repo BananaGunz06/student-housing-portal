@@ -2,6 +2,7 @@ import { screen } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
 import { campusCommute, describeCommute } from '../lib/commute'
 import { formatMoney, trueMonthlyCost } from '../lib/cost'
+import { DEFAULT_FILTERS } from '../lib/filters'
 import { getAll } from '../lib/listingsRepo'
 import { renderApp, setBudget } from '../test/renderApp'
 
@@ -93,5 +94,40 @@ describe('Listing detail', () => {
     renderApp('/listing/does-not-exist')
     expect(screen.getByRole('heading', { name: 'We couldn’t find that place' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Back to search' })).toBeInTheDocument()
+  })
+
+  test('Starts and Lease say the term, its month and the number of terms', () => {
+    setBudget(5000)
+    const l = getAll().find((x) => x.availableFrom === '2027-01' && x.leaseMonths === 12)!
+    renderApp(`/listing/${l.id}`)
+    expect(screen.queryByText('Available from')).toBeNull()
+    expect(screen.getByText('Starts').nextElementSibling).toHaveTextContent('Winter 2027 (January)')
+    expect(screen.getByText('Lease').nextElementSibling).toHaveTextContent('12 months (3 terms)')
+  })
+
+  describe('sublet note', () => {
+    const long = getAll().find((l) => l.leaseMonths === 12)!
+    const note = "12-month lease · you'd sublet the last 8 months"
+
+    test('shows when 4 months is chosen and the lease is 12 months', () => {
+      setBudget(5000)
+      localStorage.setItem('shp.filters', JSON.stringify({ ...DEFAULT_FILTERS, stay: 4 }))
+      renderApp(`/listing/${long.id}`)
+      expect(screen.getByText(note)).toBeInTheDocument()
+    })
+
+    test.each(['any', '8+'])('does not show for %s', (stay) => {
+      setBudget(5000)
+      localStorage.setItem('shp.filters', JSON.stringify({ ...DEFAULT_FILTERS, stay }))
+      renderApp(`/listing/${long.id}`)
+      expect(screen.queryByText(/you'd sublet/)).toBeNull()
+    })
+
+    test('says the last 4 months when 8 months is chosen', () => {
+      setBudget(5000)
+      localStorage.setItem('shp.filters', JSON.stringify({ ...DEFAULT_FILTERS, stay: 8 }))
+      renderApp(`/listing/${long.id}`)
+      expect(screen.getByText("12-month lease · you'd sublet the last 4 months")).toBeInTheDocument()
+    })
   })
 })

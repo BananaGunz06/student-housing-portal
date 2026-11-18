@@ -1,7 +1,19 @@
 import { HOUSING_TYPE_LABELS, type HousingType, type Listing } from '../data/types'
 import { campusCommute, commuteMinutes, type Commute } from './commute'
 import { fitStatus, trueMonthlyCost, type CostBreakdown, type FitStatus } from './cost'
-import { formatMonth } from './format'
+import { termLabel, termOfMonth } from './profile'
+
+/** How long the student needs a place: any, 4 months, 8 months, or 8 or more. */
+export type Stay = 'any' | 4 | 8 | '8+'
+
+export const STAY_OPTIONS: { value: Stay; label: string }[] = [
+  { value: 'any', label: 'Any' },
+  { value: 4, label: '4 months' },
+  { value: 8, label: '8 months' },
+  { value: '8+', label: '8+ months' },
+]
+
+const HOUSING_TYPES: readonly string[] = ['room', 'studio', 'apartment', 'basement', 'house']
 
 export interface Filters {
   /** 3 means 3 or more; 0 means studios. */
@@ -11,8 +23,9 @@ export interface Filters {
   furnishedOnly: boolean
   /** Maximum commute in minutes; null means no limit. */
   maxCommute: number | null
-  /** YYYY-MM; keep places available by this month. */
-  moveIn: string | null
+  /** YYYY-season (for example 2027-fall); keep places that start in this term. */
+  moveInTerm: string | null
+  stay: Stay
   showOver: boolean
 }
 
@@ -21,7 +34,8 @@ export const DEFAULT_FILTERS: Filters = {
   types: [],
   furnishedOnly: false,
   maxCommute: null,
-  moveIn: null,
+  moveInTerm: null,
+  stay: 'any',
   showOver: false,
 }
 
@@ -63,7 +77,8 @@ function matchesNonBudget(r: ListingResult, f: Filters): boolean {
   if (f.maxCommute !== null) {
     if (commuteMinutes(r.commute) > f.maxCommute) return false
   }
-  if (f.moveIn && l.availableFrom > f.moveIn) return false
+  if (f.moveInTerm && termOfMonth(l.availableFrom) !== f.moveInTerm) return false
+  if (l.leaseMonths < (f.stay === 4 ? 4 : f.stay === 'any' ? 0 : 8)) return false
   return true
 }
 
@@ -102,7 +117,8 @@ export function activeFilterCount(f: Filters): number {
     (f.types.length ? 1 : 0) +
     (f.furnishedOnly ? 1 : 0) +
     (f.maxCommute !== null ? 1 : 0) +
-    (f.moveIn ? 1 : 0) +
+    (f.moveInTerm ? 1 : 0) +
+    (f.stay !== 'any' ? 1 : 0) +
     (f.showOver ? 1 : 0)
   )
 }
@@ -127,7 +143,54 @@ export function filterChips(f: Filters): FilterChip[] {
   if (f.maxCommute !== null) {
     chips.push({ id: 'commute', label: `Commute ≤ ${f.maxCommute} min`, without: { ...f, maxCommute: null } })
   }
-  if (f.moveIn) chips.push({ id: 'move-in', label: `Available by ${formatMonth(f.moveIn)}`, without: { ...f, moveIn: null } })
+  if (f.moveInTerm) {
+    chips.push({ id: 'move-in', label: `Moving in ${termLabel(f.moveInTerm)}`, without: { ...f, moveInTerm: null } })
+  }
+  if (f.stay !== 'any') {
+    chips.push({ id: 'stay', label: STAY_OPTIONS.find((o) => o.value === f.stay)!.label, without: { ...f, stay: 'any' } })
+  }
   if (f.showOver) chips.push({ id: 'over', label: 'Including over budget', without: { ...f, showOver: false } })
   return chips
+}
+
+/** Months of the lease the student would have to sublet; 0 when there is nothing to flag. */
+export function subletMonths(leaseMonths: number, stay: Stay): number {
+  if (stay === 4) return Math.max(0, leaseMonths - 4)
+  if (stay === 8) return Math.max(0, leaseMonths - 8)
+  return 0
+}
+
+/** "12-month lease · you'd sublet the last 8 months", or null when the lease is not longer than needed. */
+export function subletNote(leaseMonths: number, stay: Stay): string | null {
+  const m = subletMonths(leaseMonths, stay)
+  return m > 0 ? `${leaseMonths}-month lease · you'd sublet the last ${m} months` : null
+}
+
+const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
+
+/**
+ * Tolerates anything (browser or account data): keeps what is valid, converts an old
+ * "available by" month to its term, and falls back to the defaults. Never throws.
+ */
+export function cleanFilters(raw: unknown): Filters {
+  const f: Filters = { ...DEFAULT_FILTERS, types: [] }
+  if (!isObj(raw)) return f
+  if (raw.bedrooms === 'any' || raw.bedrooms === 0 || raw.bedrooms === 1 || raw.bedrooms === 2 || raw.bedrooms === 3) {
+    f.bedrooms = raw.bedrooms
+  }
+  if (Array.isArray(raw.types)) {
+    f.types = raw.types.filter((t): t is HousingType => typeof t === 'string' && HOUSING_TYPES.includes(t))
+  }
+  if (typeof raw.furnishedOnly === 'boolean') f.furnishedOnly = raw.furnishedOnly
+  if (raw.maxCommute === null || (typeof raw.maxCommute === 'number' && Number.isFinite(raw.maxCommute))) {
+    f.maxCommute = raw.maxCommute
+  }
+  if (typeof raw.moveInTerm === 'string' && /^\d{4}-(winter|summer|fall)$/.test(raw.moveInTerm)) {
+    f.moveInTerm = raw.moveInTerm
+  } else if (typeof raw.moveIn === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(raw.moveIn)) {
+    f.moveInTerm = termOfMonth(raw.moveIn)
+  }
+  if (raw.stay === 'any' || raw.stay === 4 || raw.stay === 8 || raw.stay === '8+') f.stay = raw.stay
+  if (typeof raw.showOver === 'boolean') f.showOver = raw.showOver
+  return f
 }

@@ -1,6 +1,6 @@
 # Accounts, member postings and real messaging
 
-Date: 2026-11-11 · Status: design approved in chat; this spec awaits review
+Date: 2026-11-11 · Status: part 1 (accounts and sync) built and merged (#2). Parts 2 (posting a place) and 3 (real messaging with posters) were not built; the owner has put the landlord / posting side off until later.
 
 ## Why
 

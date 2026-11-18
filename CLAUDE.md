@@ -19,3 +19,4 @@ Always name the model explicitly when dispatching a subagent.
 - `src/lib/listingsRepo.ts` is the only way screens get listings; `src/lib/backend/` is the only code that talks to Supabase.
 - Supabase: only the publishable key belongs in the repo. Never commit or ask for the secret / service_role key. Database changes go in `supabase/migrations/` for the owner to run in the SQL Editor.
 - Sample data stays fictional (555-01xx phones, `example.com` emails).
+- Browser checks and screenshots use demo mode (`npm run demo`, port 5174), not real accounts. Throwaway `example.com` accounts on the real project are only for checking database rules, and are deleted afterwards. The owner's real account and profile never appear in screenshots or test output.

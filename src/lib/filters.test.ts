@@ -1,6 +1,18 @@
 import { describe, expect, test } from 'vitest'
 import { makeListing } from '../test/makeListing'
-import { DEFAULT_FILTERS, applyFilters, evaluate, filterChips, nearestBudgetWithResults, type Filters } from './filters'
+import {
+  DEFAULT_FILTERS,
+  STAY_OPTIONS,
+  applyFilters,
+  cleanFilters,
+  evaluate,
+  filterChips,
+  nearestBudgetWithResults,
+  subletMonths,
+  subletNote,
+  type Filters,
+  type Stay,
+} from './filters'
 
 const cheap = makeListing({ id: 'a', rent: 700 })
 const mid = makeListing({ id: 'b', rent: 900, type: 'studio', bedrooms: 0, furnished: true })
@@ -84,8 +96,75 @@ describe('applyFilters', () => {
     expect(ids(5000, { ...DEFAULT_FILTERS, maxCommute: 10 })).toEqual(['a', 'b', 'c', 'd'])
   })
 
-  test('move-in month keeps places available by then', () => {
-    expect(ids(5000, { ...DEFAULT_FILTERS, moveIn: '2027-05' })).toEqual(['e', 'a', 'b', 'd'])
+  test('move-in term keeps places that start in that term', () => {
+    // a, b, d, e start 2027-01 (Winter 2027); c starts 2027-09 (Fall 2027)
+    expect(ids(5000, { ...DEFAULT_FILTERS, moveInTerm: '2027-winter' })).toEqual(['e', 'a', 'b', 'd'])
+    expect(ids(5000, { ...DEFAULT_FILTERS, moveInTerm: '2027-fall' })).toEqual(['c'])
+    expect(ids(5000, { ...DEFAULT_FILTERS, moveInTerm: '2027-summer' })).toEqual([])
+  })
+})
+
+describe('length of stay', () => {
+  const lease = (months: 4 | 8 | 12) => makeListing({ id: `l${months}`, leaseMonths: months })
+  const shown = (stay: Stay) =>
+    applyFilters(evaluate([lease(4), lease(8), lease(12)], 5000), { ...DEFAULT_FILTERS, stay }).map((r) => r.listing.leaseMonths)
+      .sort((a, b) => a - b)
+
+  test('the spec table: which leases show for each choice', () => {
+    expect(shown('any')).toEqual([4, 8, 12])
+    expect(shown(4)).toEqual([4, 8, 12])
+    expect(shown(8)).toEqual([8, 12])
+    expect(shown('8+')).toEqual([8, 12])
+  })
+
+  test('sublet months and note', () => {
+    expect(subletMonths(4, 4)).toBe(0)
+    expect(subletMonths(8, 4)).toBe(4)
+    expect(subletMonths(12, 4)).toBe(8)
+    expect(subletMonths(4, 8)).toBe(0)
+    expect(subletMonths(8, 8)).toBe(0)
+    expect(subletMonths(12, 8)).toBe(4)
+    for (const n of [4, 8, 12]) {
+      expect(subletMonths(n, 'any')).toBe(0)
+      expect(subletMonths(n, '8+')).toBe(0)
+    }
+    expect(subletNote(12, 4)).toBe("12-month lease · you'd sublet the last 8 months")
+    expect(subletNote(8, 4)).toBe("8-month lease · you'd sublet the last 4 months")
+    expect(subletNote(12, 8)).toBe("12-month lease · you'd sublet the last 4 months")
+    expect(subletNote(12, 'any')).toBeNull()
+    expect(subletNote(12, '8+')).toBeNull()
+    expect(subletNote(4, 4)).toBeNull()
+  })
+
+  test('options are Any, 4 months, 8 months, 8+ months in that order', () => {
+    expect(STAY_OPTIONS.map((o) => o.label)).toEqual(['Any', '4 months', '8 months', '8+ months'])
+  })
+})
+
+describe('cleanFilters', () => {
+  test('converts an old available-by month to its term and drops the old key', () => {
+    const f = cleanFilters({ moveIn: '2027-01', furnishedOnly: true })
+    expect(f).toEqual({ ...DEFAULT_FILTERS, furnishedOnly: true, moveInTerm: '2027-winter' })
+    expect('moveIn' in f).toBe(false)
+    expect(cleanFilters({ moveIn: '2027-09' }).moveInTerm).toBe('2027-fall')
+  })
+
+  test('drops what it does not recognise', () => {
+    expect(cleanFilters({ moveIn: 'junk' }).moveInTerm).toBeNull()
+    expect(cleanFilters({ moveInTerm: '2027-spring' }).moveInTerm).toBeNull()
+    expect(cleanFilters({ stay: 12 }).stay).toBe('any')
+    expect(cleanFilters({ stay: '4' }).stay).toBe('any')
+  })
+
+  test('keeps valid terms and lengths', () => {
+    expect(cleanFilters({ moveInTerm: '2027-fall', stay: '8+' })).toEqual({ ...DEFAULT_FILTERS, moveInTerm: '2027-fall', stay: '8+' })
+    expect(cleanFilters({ stay: 4 }).stay).toBe(4)
+  })
+
+  test('null and non-objects give the defaults and never throw', () => {
+    for (const junk of [null, undefined, 5, 'x', [], true]) {
+      expect(cleanFilters(junk)).toEqual(DEFAULT_FILTERS)
+    }
   })
 })
 
@@ -106,6 +185,13 @@ describe('nearestBudgetWithResults', () => {
     ).toEqual({ budget: 2500, count: 1 })
   })
 
+  test('respects the term and length filters', () => {
+    const short = [makeListing({ id: 's', rent: 700, leaseMonths: 4 }), makeListing({ id: 't', rent: 800, leaseMonths: 12, availableFrom: '2027-09' })]
+    expect(nearestBudgetWithResults(short, { ...DEFAULT_FILTERS, moveInTerm: '2027-fall' }, 500)).toEqual({ budget: 800, count: 1 })
+    expect(nearestBudgetWithResults(short, { ...DEFAULT_FILTERS, stay: 8 }, 500)).toEqual({ budget: 800, count: 1 })
+    expect(nearestBudgetWithResults(short, { ...DEFAULT_FILTERS, moveInTerm: '2027-summer' }, 500)).toBeNull()
+  })
+
   test('returns null when no budget would help', () => {
     expect(
       nearestBudgetWithResults(all, { ...DEFAULT_FILTERS, types: ['basement'] }, 500),
@@ -124,7 +210,8 @@ describe('filterChips', () => {
       types: ['room', 'studio'],
       furnishedOnly: true,
       maxCommute: 15,
-      moveIn: '2027-01',
+      moveInTerm: '2027-winter',
+      stay: 4,
       showOver: true,
     }
     const chips = filterChips(f)
@@ -134,12 +221,15 @@ describe('filterChips', () => {
       'Studio apartment',
       'Furnished',
       'Commute ≤ 15 min',
-      'Available by January 2027',
+      'Moving in Winter 2027',
+      '4 months',
       'Including over budget',
     ])
     expect(chips[0].without).toEqual({ ...f, bedrooms: 'any' })
     expect(chips[1].without).toEqual({ ...f, types: ['studio'] })
     expect(chips[4].without).toEqual({ ...f, maxCommute: null })
+    expect(chips[5].without).toEqual({ ...f, moveInTerm: null })
+    expect(chips[6].without).toEqual({ ...f, stay: 'any' })
     expect(new Set(chips.map((c) => c.id)).size).toBe(chips.length)
   })
 

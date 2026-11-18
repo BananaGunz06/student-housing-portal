@@ -16,6 +16,8 @@ These are ideas to consider later. Each one still needs the usual steps (talk it
 3. **Links to transit information.**
    - A link to Guelph Transit, and to GO bus routes, somewhere on the site.
 
+4b. **Say what the map's count includes.** (Found 2026-11-17.) The map also shows over-budget places, so its notice can read "11 places" while the list says "2 places". The notice could say "11 places, including over budget".
+
 ## Listing cards
 
 4. **A visible "Click for more details →" on each card.**

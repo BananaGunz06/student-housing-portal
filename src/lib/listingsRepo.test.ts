@@ -11,6 +11,10 @@ describe('listingsRepo', () => {
     expect(new Set(all.map((l) => l.id)).size).toBe(40)
   })
 
+  test('every listing starts in January, May or September (the start of a term)', () => {
+    for (const l of getAll()) expect(['01', '05', '09']).toContain(l.availableFrom.split('-')[1])
+  })
+
   test('every listing is inside Guelph', () => {
     for (const l of getAll()) {
       expect(l.lat).toBeGreaterThan(43.48)

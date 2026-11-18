@@ -10,8 +10,9 @@ import { TRANSIT_META } from '../data/transit'
 import { HOUSING_TYPE_LABELS, type Listing } from '../data/types'
 import { describeCommute } from '../lib/commute'
 import { formatMoney } from '../lib/cost'
-import { evaluateOne } from '../lib/filters'
-import { bedroomsLabel, formatMonth } from '../lib/format'
+import { evaluateOne, subletNote } from '../lib/filters'
+import { bedroomsLabel, monthName } from '../lib/format'
+import { termLabel, termOfMonth } from '../lib/profile'
 import { useAccount } from '../state/AccountState'
 import { useAppState } from '../state/AppState'
 
@@ -42,12 +43,14 @@ export default function ListingDetailContent({
   /** The title heading, so the page can move focus to it. */
   headingRef?: Ref<HTMLHeadingElement>
 }) {
-  const { budget } = useAppState()
+  const { budget, filters } = useAppState()
   const { requireAccount } = useAccount()
   const [messaging, setMessaging] = useState(false)
   const [sentNote, setSentNote] = useState(false)
   const { cost, fit, commute } = evaluateOne(l, budget ?? Number.MAX_SAFE_INTEGER)
   const panel = variant === 'panel'
+  const startTerm = termOfMonth(l.availableFrom)
+  const sublet = subletNote(l.leaseMonths, filters.stay)
   const message = () => requireAccount('message', () => setMessaging(true))
 
   return (
@@ -130,12 +133,13 @@ export default function ListingDetailContent({
 
         <Section title="The details">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-2xl border border-line bg-card p-4">
-            <div><dt className="text-sm text-ink-soft">Lease</dt><dd className="font-bold">{l.leaseMonths} months</dd></div>
-            <div><dt className="text-sm text-ink-soft">Available from</dt><dd className="font-bold">{formatMonth(l.availableFrom)}</dd></div>
+            <div><dt className="text-sm text-ink-soft">Lease</dt><dd className="font-bold">{`${l.leaseMonths} months (${l.leaseMonths / 4} ${l.leaseMonths === 4 ? 'term' : 'terms'})`}</dd></div>
+            <div><dt className="text-sm text-ink-soft">Starts</dt><dd className="font-bold">{`${termLabel(startTerm)} (${monthName(l.availableFrom)})`}</dd></div>
             <div><dt className="text-sm text-ink-soft">Bedrooms</dt><dd className="font-bold">{bedroomsLabel(l)}</dd></div>
             <div><dt className="text-sm text-ink-soft">Bathrooms</dt><dd className="font-bold">{l.bathrooms}{l.type === 'room' ? ' shared' : ''}</dd></div>
             <div><dt className="text-sm text-ink-soft">Furnished</dt><dd className="font-bold">{l.furnished ? 'Yes' : 'No'}</dd></div>
           </dl>
+          {sublet && <p className="mt-3 font-bold">{sublet}</p>}
           <p className="mt-4">{l.description}</p>
         </Section>
       </div>

@@ -2,22 +2,17 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import BudgetInput from '../components/BudgetInput'
 import { CAMPUS } from '../data/campus'
-import type { Filters } from '../lib/filters'
+import { STAY_OPTIONS, type Stay } from '../lib/filters'
+import { termOptionsWith, upcomingTerms } from '../lib/profile'
 import { useAppState } from '../state/AppState'
-
-const BEDROOMS: { value: Filters['bedrooms']; label: string }[] = [
-  { value: 'any', label: 'Any' },
-  { value: 1, label: 'A room or 1 bed' },
-  { value: 0, label: 'Studio' },
-  { value: 2, label: '2 beds' },
-  { value: 3, label: '3+ beds' },
-]
 
 export default function Welcome() {
   const { budget, setBudget, filters, setFilters } = useAppState()
   const [draft, setDraft] = useState(budget ?? 900)
-  const [moveIn, setMoveIn] = useState(filters.moveIn ?? '')
-  const [bedrooms, setBedrooms] = useState<Filters['bedrooms']>(filters.bedrooms)
+  const [term, setTerm] = useState(filters.moveInTerm ?? '')
+  const [stay, setStay] = useState<Stay>(filters.stay)
+  const [upcoming] = useState(() => upcomingTerms(new Date()))
+  const terms = termOptionsWith(upcoming, filters.moveInTerm)
   const navigate = useNavigate()
 
   function submit(e: FormEvent) {
@@ -26,7 +21,7 @@ export default function Welcome() {
     const active = document.activeElement
     if (active instanceof HTMLInputElement) active.blur()
     setBudget(draft)
-    setFilters({ ...filters, moveIn: moveIn || null, bedrooms })
+    setFilters({ ...filters, moveInTerm: term || null, stay })
     navigate('/results')
   }
 
@@ -44,36 +39,39 @@ export default function Welcome() {
           <BudgetInput id="budget" size="lg" value={draft} onChange={setDraft} />
         </div>
 
-        <details className="mt-6 rounded-2xl border border-line bg-card px-4 [&[open]>summary]:mb-2">
-          <summary className="flex min-h-12 cursor-pointer items-center font-bold">More details (optional)</summary>
-          <label className="mt-2 flex flex-col gap-1">
-            <span>When do you move in?</span>
-            <input
-              type="month"
+          <label className="mt-6 flex flex-col gap-1">
+            <span>Which term do you move in?</span>
+            <select
               className="min-h-11 rounded-xl border-2 border-line bg-paper px-3"
-              value={moveIn}
-              onChange={(e) => setMoveIn(e.target.value)}
-            />
+              value={term}
+              onChange={(e) => setTerm(e.target.value)}
+            >
+              <option value="">Not sure yet</option>
+              {terms.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
           </label>
-          <fieldset className="mt-4 pb-4">
-            <legend className="mb-2">How many bedrooms?</legend>
+          <fieldset className="mt-5">
+            <legend className="mb-2">For how long?</legend>
             <div className="flex flex-wrap gap-2">
-              {BEDROOMS.map((b) => (
+              {STAY_OPTIONS.map((o) => (
                 <button
-                  key={b.label}
+                  key={o.label}
                   type="button"
-                  aria-pressed={bedrooms === b.value}
-                  onClick={() => setBedrooms(b.value)}
+                  aria-pressed={stay === o.value}
+                  onClick={() => setStay(o.value)}
                   className={`min-h-11 rounded-full border-2 px-4 font-bold ${
-                    bedrooms === b.value ? 'border-ink bg-ink text-white' : 'border-line bg-paper'
+                    stay === o.value ? 'border-ink bg-ink text-white' : 'border-line bg-paper'
                   }`}
                 >
-                  {b.label}
+                  {o.label}
                 </button>
               ))}
             </div>
           </fieldset>
-        </details>
 
         <button type="submit" className="mt-auto min-h-14 rounded-full bg-ink px-6 text-lg font-bold text-white sm:mt-8">
           Show places that fit
